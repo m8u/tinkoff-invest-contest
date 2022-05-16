@@ -170,7 +170,7 @@ func (bot *Bot) Serve(charts *Charts) {
 				log.Printf("\n"+
 					"NEW TRADING DAY STARTED\n"+
 					"instrument: %v (%v)\n"+
-					"allow margin: %t"+
+					"allow margin: %t\n"+
 					"money have: %+v\n"+
 					"lots have: %+v",
 					share.Instrument.Ticker, bot.figi, bot.allowMargin, moneyHave, lotsHave)
@@ -215,11 +215,13 @@ func (bot *Bot) Serve(charts *Charts) {
 					} else {
 						lotsHave = 0
 					}
-					log.Printf("lots have: %+v; money have: %+v", lotsHave, moneyHave)
 					charts.BalanceHistory = append(charts.BalanceHistory, moneyHave)
-
-					marginAttributes, err := bot.restClient.GetMarginAttributes(bot.account.ID)
-					MaybeCrash(err)
+					
+					var marginAttributes MarginAttributes
+					if bot.isSandbox {
+					    marginAttributes, err = bot.restClient.GetMarginAttributes(bot.account.ID)
+					    MaybeCrash(err)
+					}
 
 					var maxDealValue float64
 					var lots int
@@ -238,6 +240,8 @@ func (bot *Bot) Serve(charts *Charts) {
 							goto NextTick
 						}
 
+						log.Printf("lots have: %+v; money have: %+v", lotsHave, moneyHave)
+						
 						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.BUY, bot.account.ID, bot.isSandbox)
 						if err != nil {
 							log.Println("!!! order error: " + err.Error())
@@ -260,6 +264,8 @@ func (bot *Bot) Serve(charts *Charts) {
 							goto NextTick
 						}
 
+						log.Printf("lots have: %+v; money have: %+v", lotsHave, moneyHave)
+
 						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.SELL, bot.account.ID, bot.isSandbox)
 						if err != nil {
 							log.Println("!!! order error: " + err.Error())
@@ -270,7 +276,7 @@ func (bot *Bot) Serve(charts *Charts) {
 							order.ExecutedLots, order.Status)
 						break
 					}
-					if len(charts.Flags) > 0 && charts.Flags[len(charts.Flags)-1][0].CandleIndex != len(charts.Candles)-1 {
+					if len(charts.Flags) == 0 || charts.Flags[len(charts.Flags)-1][0].CandleIndex != len(charts.Candles)-1 {
 						charts.Flags = append(charts.Flags, make([]ChartsTradeFlag, 0))
 					} else {
 						charts.Flags[len(charts.Flags)-1] = append(charts.Flags[len(charts.Flags)-1],
