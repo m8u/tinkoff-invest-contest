@@ -79,7 +79,7 @@ func NewCombatBot(token string, figi string, candleInterval sdk.CandleInterval,
 
 	accounts, err := bot.restClient.GetAccounts()
 	MaybeCrash(err)
-	bot.account = accounts[0] // TODO: если несолько счетов, выбирается первый попавшийся
+	bot.account = accounts[0] // TODO: если несколько счетов, выбирается первый попавшийся
 
 	bot.token = token
 
@@ -89,12 +89,11 @@ func NewCombatBot(token string, figi string, candleInterval sdk.CandleInterval,
 // runMarketDataStream запускает цикл чтения ивентов StreamingAPI, который самовосстанавливается в случае потери соединения
 func (bot *Bot) runMarketDataStream() {
 	for !ShouldExit {
-		// подписываемся на InstrumentInfo чтобы получать статус торговли
 		err := bot.streamingClient.SubscribeInstrumentInfo(bot.figi, "0")
 		MaybeCrash(err)
-		// и на Candle чтобы получать текущую цену
 		err = bot.streamingClient.SubscribeCandle(bot.figi, bot.candleInterval, "1")
 		MaybeCrash(err)
+		log.Println("market data stream is running")
 		err = bot.streamingClient.RunReadLoop(func(event any) error {
 			eventValue := reflect.ValueOf(event)
 			switch eventValue.FieldByName("FullEvent").FieldByName("Name").String() {
@@ -109,19 +108,17 @@ func (bot *Bot) runMarketDataStream() {
 			}
 			return nil
 		})
-		log.Println(err.Error())
+		log.Println("market data stream has collapsed")
 
 		time.Sleep(10 * time.Second)
-		log.Println("reopening market data stream...")
 
-		err = bot.streamingClient.Close()
-		if err != nil {
-			log.Println(err)
+		for NoInternetConnection {
+			time.Sleep(time.Second)
 		}
-		bot.streamingClient, err = sdk.NewStreamingClient(nil, bot.token)
-		if err != nil {
-			log.Println(err)
-		}
+
+		log.Println("reopening market data stream...")
+		_ = bot.streamingClient.Close()
+		bot.streamingClient, _ = sdk.NewStreamingClient(nil, bot.token)
 	}
 }
 
@@ -134,14 +131,18 @@ func (bot *Bot) Serve(charts *Charts) {
 	}
 
 	// получаем ранние свечи в количестве >= window
-	for i := 0; len(charts.Candles) < bot.strategyParams.Window; i++ {
+	for i := 0; len(*charts.Candles) < bot.strategyParams.Window; i++ {
 		candles, err := GetCandlesForLastNDays(bot.restClient, bot.figi, i, bot.candleInterval)
 		MaybeCrash(err)
-		charts.Candles = append(candles, charts.Candles...)
+		*charts.Candles = append(candles, *charts.Candles...)
 	}
 
+	portfolio, err := bot.restClient.GetPortfolio(bot.account.ID, bot.isSandbox)
+	MaybeCrash(err)
+	*charts.StartBalance = portfolio.Currencies[0].Balance
+
 	// Дневной цикл
-	for !ShouldExit { // TODO: интернет соединение как-то восстанавливать
+	for !ShouldExit {
 		share, err := bot.restClient.ShareBy(FIGI, "", bot.figi)
 		MaybeCrash(err)
 
@@ -176,10 +177,10 @@ func (bot *Bot) Serve(charts *Charts) {
 					share.Instrument.Ticker, bot.figi, bot.allowMargin, moneyHave, lotsHave)
 			}
 
-			charts.Candles = append(charts.Candles, bot.marketInfo.currentCandle)
+			*charts.Candles = append(*charts.Candles, bot.marketInfo.currentCandle)
 			currentCandleTS := bot.marketInfo.currentCandle.TS
 
-			if len(charts.Candles) > 1 {
+			if len(*charts.Candles) > 1 {
 				candles, err := bot.restClient.GetCandles(
 					time.Now().Add(-3*CandleIntervalsToDurations[bot.candleInterval]),
 					time.Now(),
@@ -188,14 +189,22 @@ func (bot *Bot) Serve(charts *Charts) {
 				)
 				MaybeCrash(err)
 				if len(candles) > 0 {
-					charts.Candles[len(charts.Candles)-2] = candles[len(candles)-1]
+					(*charts.Candles)[len(*charts.Candles)-2] = candles[len(candles)-1]
 				}
 			}
 
 			newCandle := true
 			// Тиковый цикл (>=1 сек)
 			for !ShouldExit && bot.marketInfo.currentCandle.TS == currentCandleTS {
-				charts.Candles[len(charts.Candles)-1] = bot.marketInfo.currentCandle
+				// абьюзим UserService с целью проверки интернет-соединения (см. restv2_client.go:request())
+				if bot.isSandbox {
+					_, err = bot.restClient.GetSandboxAccounts()
+				} else {
+					_, err = bot.restClient.GetAccounts()
+				}
+				MaybeCrash(err)
+
+				(*charts.Candles)[len(*charts.Candles)-1] = bot.marketInfo.currentCandle
 
 				tradeSignal := GetTradeSignal(
 					bot.strategyParams,
@@ -215,16 +224,16 @@ func (bot *Bot) Serve(charts *Charts) {
 					} else {
 						lotsHave = 0
 					}
-					charts.BalanceHistory = append(charts.BalanceHistory, moneyHave)
-					
+
 					var marginAttributes MarginAttributes
-					if bot.isSandbox {
-					    marginAttributes, err = bot.restClient.GetMarginAttributes(bot.account.ID)
-					    MaybeCrash(err)
+					if !bot.isSandbox {
+						marginAttributes, err = bot.restClient.GetMarginAttributes(bot.account.ID)
+						MaybeCrash(err)
 					}
 
 					var maxDealValue float64
 					var lots int
+					var orderPrice float64
 
 					switch tradeSignal.Direction {
 					case sdk.BUY:
@@ -241,15 +250,19 @@ func (bot *Bot) Serve(charts *Charts) {
 						}
 
 						log.Printf("lots have: %+v; money have: %+v", lotsHave, moneyHave)
-						
+
+						orderPrice = bot.marketInfo.currentCandle.ClosePrice
 						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.BUY, bot.account.ID, bot.isSandbox)
 						if err != nil {
-							log.Println("!!! order error: " + err.Error())
+							log.Printf("!!! order error: %v", err)
 						}
-
+						for order.ExecutedLots != lots {
+							time.Sleep(5 * time.Second)
+						}
 						log.Printf("BUY %v for %v (executed: %v; status: %v)",
-							order.RequestedLots, bot.marketInfo.currentCandle.ClosePrice,
+							order.RequestedLots, orderPrice,
 							order.ExecutedLots, order.Status)
+
 						break
 					case sdk.SELL:
 						if bot.allowMargin && share.Instrument.ShortEnabledFlag {
@@ -266,28 +279,39 @@ func (bot *Bot) Serve(charts *Charts) {
 
 						log.Printf("lots have: %+v; money have: %+v", lotsHave, moneyHave)
 
+						orderPrice = bot.marketInfo.currentCandle.ClosePrice
 						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.SELL, bot.account.ID, bot.isSandbox)
 						if err != nil {
-							log.Println("!!! order error: " + err.Error())
+							log.Printf("!!! order error: %v", err)
 						}
-
+						for order.ExecutedLots != lots {
+							order, err = bot.restClient.GetOrderState(bot.account.ID, order.ID, bot.isSandbox)
+							time.Sleep(5 * time.Second)
+						}
 						log.Printf("SELL %v for %v (executed: %v; status: %v)",
-							order.RequestedLots, bot.marketInfo.currentCandle.ClosePrice,
+							order.RequestedLots, orderPrice,
 							order.ExecutedLots, order.Status)
+
 						break
 					}
-					if len(charts.Flags) == 0 || charts.Flags[len(charts.Flags)-1][0].CandleIndex != len(charts.Candles)-1 {
-						charts.Flags = append(charts.Flags, make([]ChartsTradeFlag, 0))
+
+					*charts.BalanceHistory = append(*charts.BalanceHistory, moneyHave)
+
+					if len(*charts.Flags) > 0 {
+						if (*charts.Flags)[len(*charts.Flags)-1][0].CandleIndex != len(*charts.Candles)-1 {
+							*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
+						}
 					} else {
-						charts.Flags[len(charts.Flags)-1] = append(charts.Flags[len(charts.Flags)-1],
-							ChartsTradeFlag{
-								tradeSignal.Direction,
-								bot.marketInfo.currentCandle.ClosePrice,
-								lots * share.Instrument.Lot,
-								len(charts.Candles) - 1,
-							},
-						)
+						*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
 					}
+					(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
+						ChartsTradeFlag{
+							tradeSignal.Direction,
+							bot.marketInfo.currentCandle.ClosePrice,
+							lots * share.Instrument.Lot,
+							len(*charts.Candles) - 1,
+						},
+					)
 				}
 
 			NextTick:
@@ -297,7 +321,7 @@ func (bot *Bot) Serve(charts *Charts) {
 			newDay = false
 		}
 
-		if !newDay { // признак захода в свечной цикл
+		if !newDay && !ShouldExit { // !newDay - признак захода в свечной цикл
 			log.Println("TRADING DAY HAS ENDED")
 		}
 

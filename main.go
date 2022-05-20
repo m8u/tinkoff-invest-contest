@@ -17,6 +17,7 @@ import (
 const AppName = "m8u"
 
 var ShouldExit = false
+var NoInternetConnection = false
 
 func main() {
 	var mode = flag.String("mode", "",
@@ -58,7 +59,7 @@ func main() {
 		"Maximum relative deviation when detecting price-bound intersections (normalized, e.g. 0.001 for 0.1%)",
 	)
 	var allowMargin = flag.Bool("allow_margin", false,
-		"Either allow margin trading or not (1 or 0)",
+		"Either allow margin trading or not (1 or 0) (default: 0)",
 	)
 	flag.Parse()
 
@@ -84,7 +85,14 @@ func main() {
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(multiWriter)
 
-	var charts Charts
+	charts := Charts{
+		Candles:        new([]sdk.Candle),
+		Intervals:      new([][]float64),
+		Flags:          new([][]ChartsTradeFlag),
+		BalanceHistory: new([]float64),
+		StartBalance:   new(float64),
+		TestMode:       new(bool),
+	}
 
 	_ = godotenv.Load(".env")
 
@@ -94,6 +102,10 @@ func main() {
 		if token == "" {
 			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
 		}
+
+		WaitForInternetConnection()
+
+		*charts.TestMode = true
 		log.Println("Testing on historical data...")
 		TestOnHistoricalData(
 			token,
@@ -119,6 +131,10 @@ func main() {
 		if token == "" {
 			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
 		}
+
+		WaitForInternetConnection()
+
+		*charts.TestMode = false
 		log.Println("Starting a sandbox bot...")
 		bot := NewSandboxBot(
 			token,
@@ -142,6 +158,10 @@ func main() {
 		if token == "" {
 			log.Fatalln("please provide combat token via 'COMBAT_TOKEN' environment variable")
 		}
+
+		WaitForInternetConnection()
+
+		*charts.TestMode = false
 		log.Println("Starting a combat bot...")
 		bot := NewCombatBot(
 			token,

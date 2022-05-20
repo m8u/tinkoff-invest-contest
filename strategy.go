@@ -48,36 +48,45 @@ func isAroundPoint(samplePoint float64, refPoint float64, deviation float64) boo
 		samplePoint <= refPoint+refPoint*deviation
 }
 
+// isBetweenIncl определеяет, находится ли точка samplePoint включительно
+// между точками bound1 и bound2
+func isBetweenIncl(samplePoint float64, bound1 float64, bound2 float64) bool {
+	return bound1 <= samplePoint && samplePoint <= bound2 ||
+		bound2 <= samplePoint && samplePoint <= bound1
+}
+
 // GetTradeSignal формирует рекомендацию в виде торгового сигнала (TradeSignal)
 func GetTradeSignal(strategyParams StrategyParams, testMode bool, currentCandle sdk.Candle, newCandle bool, charts *Charts) *TradeSignal {
 	lowerBound, upperBound := bollinger(
-		charts.Candles[len(charts.Candles)-strategyParams.Window:len(charts.Candles)-1],
+		(*charts.Candles)[len(*charts.Candles)-strategyParams.Window:len(*charts.Candles)-1],
 		strategyParams.BollingerCoef,
 	)
 	// Добавляем интервал в статистику для отображения на графике
 	// В режиме теста, если впервые, добавляем его дважды чтобы не словить index error при проверке пересечения
-	if testMode && len(charts.Intervals) == 0 {
-		charts.Intervals = append(charts.Intervals, []float64{lowerBound, upperBound})
+	if testMode && len(*charts.Intervals) == 0 {
+		*charts.Intervals = append(*charts.Intervals, []float64{lowerBound, upperBound})
 	}
 	if newCandle {
-		charts.Intervals = append(charts.Intervals, []float64{lowerBound, upperBound})
+		*charts.Intervals = append(*charts.Intervals, []float64{lowerBound, upperBound})
 	}
 
 	if isAroundPoint(currentCandle.ClosePrice, lowerBound, strategyParams.IntervalPointDeviation) ||
 		(testMode && // в тестовом режиме также проверяем топорным способом
-			((charts.Candles[len(charts.Candles)-2].ClosePrice <= charts.Intervals[len(charts.Intervals)-2][0] &&
-				currentCandle.ClosePrice >= lowerBound) ||
-				(charts.Candles[len(charts.Candles)-2].ClosePrice >= charts.Intervals[len(charts.Intervals)-2][0] &&
-					currentCandle.ClosePrice <= lowerBound))) { // buy сигнал
+			isBetweenIncl(
+				lowerBound,
+				(*charts.Candles)[len(*charts.Candles)-2].ClosePrice,
+				currentCandle.ClosePrice,
+			)) { // buy сигнал
 
 		return &TradeSignal{sdk.BUY}
 
 	} else if isAroundPoint(currentCandle.ClosePrice, upperBound, strategyParams.IntervalPointDeviation) ||
 		(testMode &&
-			((charts.Candles[len(charts.Candles)-2].ClosePrice >= charts.Intervals[len(charts.Intervals)-2][1] &&
-				currentCandle.ClosePrice <= upperBound) ||
-				(charts.Candles[len(charts.Candles)-2].ClosePrice <= charts.Intervals[len(charts.Intervals)-2][1] &&
-					currentCandle.ClosePrice >= upperBound))) { // sell сигнал
+			isBetweenIncl(
+				upperBound,
+				(*charts.Candles)[len(*charts.Candles)-2].ClosePrice,
+				currentCandle.ClosePrice,
+			)) { // sell сигнал
 
 		return &TradeSignal{sdk.SELL}
 	}

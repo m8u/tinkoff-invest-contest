@@ -11,16 +11,18 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-const apiUrl string = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1"
+const ApiUrl string = "https://invest-public-api.tinkoff.ru/rest/tinkoff.public.invest.api.contract.v1"
 
 type RestClientV2 struct {
 	token   string
@@ -53,15 +55,27 @@ func (c *RestClientV2) request(path string, payload any) ([]byte, error) {
 	req.Header.Add("Authorization", "Bearer "+c.token)
 	req.Header.Add("x-app-name", c.appname)
 
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, err
+	var resp *http.Response
+
+	// здесь происходит ожидание интернет-подключения при любом запросе к REST API
+	err = errors.New("")
+	for err != nil {
+		resp, err = httpClient.Do(req)
+		if err != nil {
+			if !NoInternetConnection {
+				log.Println("waiting for internet connection...")
+			}
+			NoInternetConnection = true
+			time.Sleep(10 * time.Second)
+		}
 	}
+	NoInternetConnection = false
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			log.Println("here")
 			var apiError apiError
 			body, err := ioutil.ReadAll(resp.Body)
 			MaybeCrash(err)
@@ -81,7 +95,7 @@ func (c *RestClientV2) request(path string, payload any) ([]byte, error) {
 }
 
 func (c *RestClientV2) CloseSandboxAccount(accountId string) error {
-	path := apiUrl + ".SandboxService/CloseSandboxAccount"
+	path := ApiUrl + ".SandboxService/CloseSandboxAccount"
 
 	payload := struct {
 		AccountId string `json:"accountId"`
@@ -96,7 +110,7 @@ func (c *RestClientV2) CloseSandboxAccount(accountId string) error {
 }
 
 func (c *RestClientV2) GetAccounts() ([]sdk.Account, error) {
-	path := apiUrl + ".UsersService/GetAccounts"
+	path := ApiUrl + ".UsersService/GetAccounts"
 
 	payload := struct{}{}
 	respBody, err := c.request(path, payload)
@@ -129,7 +143,7 @@ func (c *RestClientV2) GetAccounts() ([]sdk.Account, error) {
 }
 
 func (c *RestClientV2) GetCandles(from time.Time, to time.Time, interval sdk.CandleInterval, figi string) ([]sdk.Candle, error) {
-	path := apiUrl + ".MarketDataService/GetCandles"
+	path := ApiUrl + ".MarketDataService/GetCandles"
 
 	candleIntervalsV1ToV2 := map[sdk.CandleInterval]string{
 		sdk.CandleInterval1Min: "CANDLE_INTERVAL_1_MIN",
@@ -194,7 +208,7 @@ func (c *RestClientV2) GetCandles(from time.Time, to time.Time, interval sdk.Can
 }
 
 func (c *RestClientV2) GetInfo() (UserInfo, error) {
-	path := apiUrl + ".UsersService/GetInfo"
+	path := ApiUrl + ".UsersService/GetInfo"
 
 	respBody, err := c.request(path, struct{}{})
 	if err != nil {
@@ -211,7 +225,7 @@ func (c *RestClientV2) GetInfo() (UserInfo, error) {
 }
 
 func (c *RestClientV2) GetMarginAttributes(accountId string) (MarginAttributes, error) {
-	path := apiUrl + ".UsersService/GetMarginAttributes"
+	path := ApiUrl + ".UsersService/GetMarginAttributes"
 
 	payload := struct {
 		AccountId string `json:"accountId"`
@@ -231,9 +245,79 @@ func (c *RestClientV2) GetMarginAttributes(accountId string) (MarginAttributes, 
 	return marginAttributes, nil
 }
 
+type orderResponse struct {
+	OrderId               string     `json:"orderId"`
+	FIGI                  string     `json:"figi"`
+	ExecutionReportStatus string     `json:"executionReportStatus"`
+	InitialOrderPrice     MoneyValue `json:"initialOrderPrice"`
+	InitialCommission     MoneyValue `json:"initialCommission"`
+	Message               string     `json:"message"`
+	LotsExecuted          string     `json:"lotsExecuted"`
+	TotalOrderAmount      MoneyValue `json:"totalOrderAmount"`
+	LotsRequested         string     `json:"lotsRequested"`
+	InitialOrderPricePt   Quotation  `json:"initialOrderPricePt"`
+	ExecutedOrderPrice    MoneyValue `json:"executedOrderPrice"`
+	ExecutedCommission    MoneyValue `json:"executedCommission"`
+	InitialSecurityPrice  MoneyValue `json:"initialSecurityPrice"`
+	AciValue              MoneyValue `json:"aciValue"`
+}
+
+func (c *RestClientV2) GetOrderState(accountId string, orderId string, isSandbox bool) (sdk.PlacedOrder, error) {
+	path := ApiUrl
+	if isSandbox {
+		path += ".SandboxService/GetSandboxOrderState"
+	} else {
+		path += ".OrdersService/GetOrderState"
+	}
+
+	payload := struct {
+		AccountId string `json:"accountId"`
+		OrderId   string `json:"orderId"`
+	}{
+		AccountId: accountId,
+		OrderId:   orderId,
+	}
+
+	respBody, err := c.request(path, payload)
+	if err != nil {
+		return sdk.PlacedOrder{}, err
+	}
+
+	orderResp := orderResponse{}
+	err = json.Unmarshal(respBody, &orderResp)
+	if err != nil {
+		return sdk.PlacedOrder{}, err
+	}
+
+	statusV2ToV1 := map[string]sdk.OrderStatus{
+		"EXECUTION_REPORT_STATUS_FILL":          sdk.OrderStatusFill,
+		"EXECUTION_REPORT_STATUS_REJECTED":      sdk.OrderStatusRejected,
+		"EXECUTION_REPORT_STATUS_CANCELLED":     sdk.OrderStatusCancelled,
+		"EXECUTION_REPORT_STATUS_NEW":           sdk.OrderStatusNew,
+		"EXECUTION_REPORT_STATUS_PARTIALLYFILL": sdk.OrderStatusPartiallyFill,
+	}
+
+	lotsRequested, _ := strconv.Atoi(orderResp.LotsRequested)
+	lotsExecuted, _ := strconv.Atoi(orderResp.LotsExecuted)
+	order := sdk.PlacedOrder{
+		ID:            orderResp.OrderId,
+		Status:        statusV2ToV1[orderResp.ExecutionReportStatus],
+		RejectReason:  "",
+		RequestedLots: lotsRequested,
+		ExecutedLots:  lotsExecuted,
+		Commission: sdk.MoneyAmount{
+			Currency: sdk.RUB,
+			Value:    orderResp.ExecutedCommission.ToFloat(),
+		},
+		Message: orderResp.Message,
+	}
+
+	return order, nil
+}
+
 // GetPortfolio обращается к методу GetPositions (GetSandboxPositions) API версии 2 и формирует sdk.Portfolio
 func (c *RestClientV2) GetPortfolio(accountId string, isSandbox bool) (sdk.Portfolio, error) {
-	path := apiUrl
+	path := ApiUrl
 	if isSandbox {
 		path += ".SandboxService/GetSandboxPositions"
 	} else {
@@ -291,8 +375,41 @@ func (c *RestClientV2) GetPortfolio(accountId string, isSandbox bool) (sdk.Portf
 	return portfolio, nil
 }
 
+func (c *RestClientV2) GetSandboxAccounts() ([]sdk.Account, error) {
+	path := ApiUrl + ".SandboxService/GetSandboxAccounts"
+
+	payload := struct{}{}
+	respBody, err := c.request(path, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	accountsResp := struct {
+		Accounts []struct {
+			Id          string    `json:"id"`
+			Type        string    `json:"type"`
+			Name        string    `json:"name"`
+			Status      string    `json:"status"`
+			OpenedDate  time.Time `json:"openedDate"`
+			ClosedDate  time.Time `json:"closedDate"`
+			AccessLevel string    `json:"accessLevel"`
+		} `json:"accounts"`
+	}{}
+	err = json.Unmarshal(respBody, &accountsResp)
+	if err != nil {
+		return nil, err
+	}
+
+	accounts := make([]sdk.Account, 0)
+	for _, account := range accountsResp.Accounts {
+		accounts = append(accounts, sdk.Account{ID: account.Id})
+	}
+
+	return accounts, nil
+}
+
 func (c *RestClientV2) OpenSandboxAccount() (sdk.Account, error) {
-	path := apiUrl + ".SandboxService/OpenSandboxAccount"
+	path := ApiUrl + ".SandboxService/OpenSandboxAccount"
 
 	payload := struct{}{}
 	respBody, err := c.request(path, payload)
@@ -312,7 +429,7 @@ func (c *RestClientV2) OpenSandboxAccount() (sdk.Account, error) {
 }
 
 func (c *RestClientV2) PostMarketOrder(figi string, lots int, direction sdk.OperationType, accountId string, isSandbox bool) (sdk.PlacedOrder, error) {
-	path := apiUrl
+	path := ApiUrl
 	if isSandbox {
 		path += ".SandboxService/PostSandboxOrder"
 	} else {
@@ -325,16 +442,13 @@ func (c *RestClientV2) PostMarketOrder(figi string, lots int, direction sdk.Oper
 	}
 
 	payload := struct {
-		FIGI     string `json:"figi"`
-		Quantity string `json:"quantity"`
-		Price    struct {
-			Nano  int    `json:"nano"`
-			Units string `json:"units"`
-		} `json:"price"`
-		Direction string `json:"direction"`
-		AccountId string `json:"accountId"`
-		OrderType string `json:"orderType"`
-		OrderId   string `json:"orderId"`
+		FIGI      string   `json:"figi"`
+		Quantity  string   `json:"quantity"`
+		Price     struct{} `json:"price"`
+		Direction string   `json:"direction"`
+		AccountId string   `json:"accountId"`
+		OrderType string   `json:"orderType"`
+		OrderId   string   `json:"orderId"`
 	}{
 		FIGI:      figi,
 		Quantity:  fmt.Sprint(lots),
@@ -349,22 +463,7 @@ func (c *RestClientV2) PostMarketOrder(figi string, lots int, direction sdk.Oper
 		return sdk.PlacedOrder{}, err
 	}
 
-	orderResp := struct {
-		OrderId               string     `json:"orderId"`
-		FIGI                  string     `json:"figi"`
-		ExecutionReportStatus string     `json:"executionReportStatus"`
-		InitialOrderPrice     MoneyValue `json:"initialOrderPrice"`
-		InitialCommission     MoneyValue `json:"initialCommission"`
-		Message               string     `json:"message"`
-		LotsExecuted          string     `json:"lotsExecuted"`
-		TotalOrderAmount      MoneyValue `json:"totalOrderAmount"`
-		LotsRequested         string     `json:"lotsRequested"`
-		InitialOrderPricePt   Quotation  `json:"initialOrderPricePt"`
-		ExecutedOrderPrice    MoneyValue `json:"executedOrderPrice"`
-		ExecutedCommission    MoneyValue `json:"executedCommission"`
-		InitialSecurityPrice  MoneyValue `json:"initialSecurityPrice"`
-		AciValue              MoneyValue `json:"aciValue"`
-	}{}
+	orderResp := orderResponse{}
 	err = json.Unmarshal(respBody, &orderResp)
 	if err != nil {
 		return sdk.PlacedOrder{}, err
@@ -398,7 +497,7 @@ func (c *RestClientV2) PostMarketOrder(figi string, lots int, direction sdk.Oper
 }
 
 func (c *RestClientV2) SandboxPayIn(accountId string, currency sdk.Currency, money float64) (MoneyValue, error) {
-	path := apiUrl + ".SandboxService/SandboxPayIn"
+	path := ApiUrl + ".SandboxService/SandboxPayIn"
 
 	integer, fraction := math.Modf(money)
 	units := fmt.Sprint(int(integer))
@@ -429,7 +528,7 @@ func (c *RestClientV2) SandboxPayIn(accountId string, currency sdk.Currency, mon
 }
 
 func (c *RestClientV2) ShareBy(idType InstrumentIdType, classCode string, id string) (Share, error) {
-	path := apiUrl + ".InstrumentsService/ShareBy"
+	path := ApiUrl + ".InstrumentsService/ShareBy"
 
 	payload := struct {
 		IdType    InstrumentIdType `json:"idType"`

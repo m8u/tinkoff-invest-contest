@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 	"log"
 	"math"
+	"net/http"
 	"runtime"
 	"strconv"
 	"time"
@@ -17,6 +19,22 @@ func MaybeCrash(err error) {
 		_, filename, line, _ := runtime.Caller(1)
 		log.Fatalf("[error] %s:%d %v", filename, line, err)
 	}
+}
+
+func WaitForInternetConnection() {
+	client := http.Client{}
+	err := errors.New("")
+	for err != nil {
+		_, err = client.Get("https://clients3.google.com/")
+		if err != nil {
+			if !NoInternetConnection {
+				log.Println("waiting for internet connection...")
+			}
+			NoInternetConnection = true
+			time.Sleep(10 * time.Second)
+		}
+	}
+	NoInternetConnection = false
 }
 
 // GetCandlesForLastNDays загружает свечи за заданное кол-во последних дней
@@ -79,7 +97,7 @@ func (q *Quotation) ToFloat() float64 {
 	return float64(unitsNum) + float64(q.Nano)/math.Pow(10, float64(len(fmt.Sprint(q.Nano))))
 }
 
-// MarginAttributes - тело ответа метода GetMarginAttributes API версии 1
+// MarginAttributes - тело ответа метода UsersService/GetMarginAttributes
 type MarginAttributes struct {
 	LiquidPortfolio       MoneyValue `json:"liquidPortfolio"`
 	StartingMargin        MoneyValue `json:"startingMargin"`
@@ -96,7 +114,7 @@ const (
 	Premium  Tariff = "premium"
 )
 
-// UserInfo - тело ответа метода GetInfo API версии 1
+// UserInfo - тело ответа метода UsersService/GetInfo
 type UserInfo struct {
 	PremStatus           bool     `json:"premStatus"`
 	QualStatus           bool     `json:"qualStatus"`
@@ -119,7 +137,7 @@ const (
 	UID         InstrumentIdType = 3
 )
 
-// Share - тело ответа метода ShareBy API версии 1
+// Share - тело ответа метода InstrumentsService/ShareBy
 type Share struct {
 	Instrument struct {
 		Figi                  string     `json:"figi"`

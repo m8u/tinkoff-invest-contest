@@ -147,6 +147,8 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 		lotsHave:    0,
 	}
 
+	*charts.StartBalance = startBalance
+
 	client := RestClientV2{token: token, appname: AppName}
 
 	share, err := client.ShareBy(FIGI, "", figi)
@@ -163,13 +165,11 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 		"start balance: %+v",
 		share.Instrument.Ticker, figi, account.freeMoney)
 
-	charts.BalanceHistory = append(charts.BalanceHistory, account.freeMoney)
-
 	candles := getHistoricalCandles(&client, figi, daysBeforeNow, candleInterval)
-	charts.Candles = append(charts.Candles, candles[:strategyParams.Window]...)
+	*charts.Candles = append(*charts.Candles, candles[:strategyParams.Window]...)
 
 	for i := strategyParams.Window; i < len(candles); i++ {
-		charts.Candles = append(charts.Candles, candles[i])
+		*charts.Candles = append(*charts.Candles, candles[i])
 
 		tradeSignal := GetTradeSignal(
 			strategyParams,
@@ -218,23 +218,23 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 				testSell(candles[i].ClosePrice*float64(share.Instrument.Lot)*(1-fee), lots, account)
 				break
 			}
-			charts.Flags = append(charts.Flags, make([]ChartsTradeFlag, 0))
-			charts.Flags[len(charts.Flags)-1] = append(charts.Flags[len(charts.Flags)-1],
+			*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
+			(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
 				ChartsTradeFlag{
 					Direction:   tradeSignal.Direction,
 					Price:       candles[i].ClosePrice,
 					Quantity:    lots * share.Instrument.Lot,
-					CandleIndex: len(charts.Candles) - 1,
+					CandleIndex: len(*charts.Candles) - 1,
 				},
 			)
-			charts.BalanceHistory = append(charts.BalanceHistory, account.freeMoney)
+			*charts.BalanceHistory = append(*charts.BalanceHistory, account.freeMoney)
 		}
 	}
 	// закрываем незакрытые позиции на последней свече
 	if account.lotsHave < 0 {
 		log.Printf("!!! WARNING: force closing shorts")
-		charts.Flags = append(charts.Flags, make([]ChartsTradeFlag, 0))
-		charts.Flags[len(charts.Flags)-1] = append(charts.Flags[len(charts.Flags)-1],
+		*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
+		(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
 			ChartsTradeFlag{
 				Direction:   sdk.BUY,
 				Price:       candles[len(candles)-1].ClosePrice,
@@ -243,11 +243,11 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 			},
 		)
 		testBuy(candles[len(candles)-1].ClosePrice, -account.lotsHave, account)
-		charts.BalanceHistory = append(charts.BalanceHistory, account.freeMoney)
+		*charts.BalanceHistory = append(*charts.BalanceHistory, account.freeMoney)
 	} else if account.lotsHave > 0 {
 		log.Printf("!!! WARNING: force closing longs")
-		charts.Flags = append(charts.Flags, make([]ChartsTradeFlag, 0))
-		charts.Flags[len(charts.Flags)-1] = append(charts.Flags[len(charts.Flags)-1],
+		*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
+		(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
 			ChartsTradeFlag{
 				Direction:   sdk.SELL,
 				Price:       candles[len(candles)-1].ClosePrice,
@@ -256,7 +256,7 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 			},
 		)
 		testSell(candles[len(candles)-1].ClosePrice, account.lotsHave, account)
-		charts.BalanceHistory = append(charts.BalanceHistory, account.freeMoney)
+		*charts.BalanceHistory = append(*charts.BalanceHistory, account.freeMoney)
 	}
 	log.Printf("\n"+
 		"TEST RESULTS\n"+
