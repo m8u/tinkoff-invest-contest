@@ -31,6 +31,7 @@ type Client struct {
 }
 
 func NewClient(token string) *Client {
+	WaitForInternetConnection()
 	var err error
 	clientConn, err := grpc.Dial(ServiceAddress, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	if err != nil {
@@ -57,6 +58,16 @@ func NewClient(token string) *Client {
 	return &client
 }
 
+func (c *Client) InitMarketDataStream() {
+	var err error
+	c.marketDataStream, err = c.MarketDataStreamService.MarketDataStream(
+		newContextWithBearerToken(c.token),
+	)
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
 func newContextWithBearerToken(token string) context.Context {
 	md := metadata.New(map[string]string{
 		"x-app-name":    AppName,
@@ -65,108 +76,8 @@ func newContextWithBearerToken(token string) context.Context {
 	return metadata.NewOutgoingContext(context.Background(), md)
 }
 
-func (c *Client) GetAccounts() ([]*investapi.Account, error) {
-	accountsResp, err := c.UsersService.GetAccounts(
-		newContextWithBearerToken(c.token),
-		&investapi.GetAccountsRequest{},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return accountsResp.Accounts, nil
-}
-
-func (c *Client) GetMarginAttributes(accountId string) (*investapi.GetMarginAttributesResponse, error) {
-	marginAttributesResp, err := c.UsersService.GetMarginAttributes(
-		newContextWithBearerToken(c.token),
-		&investapi.GetMarginAttributesRequest{
-			AccountId: accountId,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return marginAttributesResp, nil
-}
-
-func (c *Client) GetInfo() (*investapi.GetInfoResponse, error) {
-	infoResp, err := c.UsersService.GetInfo(
-		newContextWithBearerToken(c.token),
-		&investapi.GetInfoRequest{},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return infoResp, nil
-}
-
-func (c *Client) GetPositions(accountId string) (*investapi.PositionsResponse, error) {
-	positionsResp, err := c.OperationsService.GetPositions(
-		newContextWithBearerToken(c.token),
-		&investapi.PositionsRequest{
-			AccountId: accountId,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return positionsResp, nil
-}
-
-func (c *Client) GetSandboxPositions(accountId string) (*investapi.PositionsResponse, error) {
-	positionsResp, err := c.SandboxService.GetSandboxPositions(
-		newContextWithBearerToken(c.token),
-		&investapi.PositionsRequest{
-			AccountId: accountId,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return positionsResp, nil
-}
-
-func (c *Client) ShareBy(idType investapi.InstrumentIdType, classCode string, id string) (*investapi.Share, error) {
-	shareResp, err := c.InstrumentsService.ShareBy(
-		newContextWithBearerToken(c.token),
-		&investapi.InstrumentRequest{
-			IdType:    idType,
-			ClassCode: classCode,
-			Id:        id,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return shareResp.Instrument, nil
-}
-
-func (c *Client) OpenSandboxAccount() (*investapi.OpenSandboxAccountResponse, error) {
-	openSandboxAccountResp, err := c.SandboxService.OpenSandboxAccount(
-		newContextWithBearerToken(c.token),
-		&investapi.OpenSandboxAccountRequest{},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return openSandboxAccountResp, nil
-}
-
-func (c *Client) SandboxPayIn(accountId string, currency string, amount float64) (*investapi.SandboxPayInResponse, error) {
-	sandboxPayInResp, err := c.SandboxService.SandboxPayIn(
-		newContextWithBearerToken(c.token),
-		&investapi.SandboxPayInRequest{
-			AccountId: accountId,
-			Amount:    MoneyValueFromFloat(currency, amount),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return sandboxPayInResp, nil
-}
-
 func (c *Client) CloseSandboxAccount(accountId string) (*investapi.CloseSandboxAccountResponse, error) {
+	WaitForInternetConnection()
 	closeSandboxAccountResp, err := c.SandboxService.CloseSandboxAccount(
 		newContextWithBearerToken(c.token),
 		&investapi.CloseSandboxAccountRequest{
@@ -179,7 +90,20 @@ func (c *Client) CloseSandboxAccount(accountId string) (*investapi.CloseSandboxA
 	return closeSandboxAccountResp, nil
 }
 
+func (c *Client) GetAccounts() ([]*investapi.Account, error) {
+	WaitForInternetConnection()
+	accountsResp, err := c.UsersService.GetAccounts(
+		newContextWithBearerToken(c.token),
+		&investapi.GetAccountsRequest{},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return accountsResp.Accounts, nil
+}
+
 func (c *Client) GetCandles(figi string, from time.Time, to time.Time, interval investapi.CandleInterval) ([]*investapi.HistoricCandle, error) {
+	WaitForInternetConnection()
 	candlesResp, err := c.MarketDataService.GetCandles(
 		newContextWithBearerToken(c.token),
 		&investapi.GetCandlesRequest{
@@ -195,7 +119,63 @@ func (c *Client) GetCandles(figi string, from time.Time, to time.Time, interval 
 	return candlesResp.Candles, nil
 }
 
+func (c *Client) GetInfo() (*investapi.GetInfoResponse, error) {
+	WaitForInternetConnection()
+	infoResp, err := c.UsersService.GetInfo(
+		newContextWithBearerToken(c.token),
+		&investapi.GetInfoRequest{},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return infoResp, nil
+}
+
+func (c *Client) GetMarginAttributes(accountId string) (*investapi.GetMarginAttributesResponse, error) {
+	WaitForInternetConnection()
+	marginAttributesResp, err := c.UsersService.GetMarginAttributes(
+		newContextWithBearerToken(c.token),
+		&investapi.GetMarginAttributesRequest{
+			AccountId: accountId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return marginAttributesResp, nil
+}
+
+func (c *Client) GetOrderState(accountId string, orderId string) (*investapi.OrderState, error) {
+	WaitForInternetConnection()
+	orderState, err := c.OrdersService.GetOrderState(
+		newContextWithBearerToken(c.token),
+		&investapi.GetOrderStateRequest{
+			AccountId: accountId,
+			OrderId:   orderId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return orderState, nil
+}
+
+func (c *Client) GetPositions(accountId string) (*investapi.PositionsResponse, error) {
+	WaitForInternetConnection()
+	positionsResp, err := c.OperationsService.GetPositions(
+		newContextWithBearerToken(c.token),
+		&investapi.PositionsRequest{
+			AccountId: accountId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return positionsResp, nil
+}
+
 func (c *Client) GetSandboxAccounts() ([]*investapi.Account, error) {
+	WaitForInternetConnection()
 	sandboxAccountsResp, err := c.SandboxService.GetSandboxAccounts(
 		newContextWithBearerToken(c.token),
 		&investapi.GetAccountsRequest{},
@@ -206,8 +186,50 @@ func (c *Client) GetSandboxAccounts() ([]*investapi.Account, error) {
 	return sandboxAccountsResp.Accounts, nil
 }
 
+func (c *Client) GetSandboxOrderState(accountId string, orderId string) (*investapi.OrderState, error) {
+	WaitForInternetConnection()
+	orderState, err := c.SandboxService.GetSandboxOrderState(
+		newContextWithBearerToken(c.token),
+		&investapi.GetOrderStateRequest{
+			AccountId: accountId,
+			OrderId:   orderId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return orderState, nil
+}
+
+func (c *Client) GetSandboxPositions(accountId string) (*investapi.PositionsResponse, error) {
+	WaitForInternetConnection()
+	positionsResp, err := c.SandboxService.GetSandboxPositions(
+		newContextWithBearerToken(c.token),
+		&investapi.PositionsRequest{
+			AccountId: accountId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return positionsResp, nil
+}
+
+func (c *Client) OpenSandboxAccount() (*investapi.OpenSandboxAccountResponse, error) {
+	WaitForInternetConnection()
+	openSandboxAccountResp, err := c.SandboxService.OpenSandboxAccount(
+		newContextWithBearerToken(c.token),
+		&investapi.OpenSandboxAccountRequest{},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return openSandboxAccountResp, nil
+}
+
 func (c *Client) PostOrder(figi string, quantity int64, price float64, direction investapi.OrderDirection,
 	accountId string, orderType investapi.OrderType, orderId string) (*investapi.PostOrderResponse, error) {
+	WaitForInternetConnection()
 	postOrderResp, err := c.OrdersService.PostOrder(
 		newContextWithBearerToken(c.token),
 		&investapi.PostOrderRequest{
@@ -228,6 +250,7 @@ func (c *Client) PostOrder(figi string, quantity int64, price float64, direction
 
 func (c *Client) PostSandboxOrder(figi string, quantity int64, price float64, direction investapi.OrderDirection,
 	accountId string, orderType investapi.OrderType, orderId string) (*investapi.PostOrderResponse, error) {
+	WaitForInternetConnection()
 	postOrderResp, err := c.SandboxService.PostSandboxOrder(
 		newContextWithBearerToken(c.token),
 		&investapi.PostOrderRequest{
@@ -246,35 +269,8 @@ func (c *Client) PostSandboxOrder(figi string, quantity int64, price float64, di
 	return postOrderResp, nil
 }
 
-func (c *Client) GetOrderState(accountId string, orderId string) (*investapi.OrderState, error) {
-	orderState, err := c.OrdersService.GetOrderState(
-		newContextWithBearerToken(c.token),
-		&investapi.GetOrderStateRequest{
-			AccountId: accountId,
-			OrderId:   orderId,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return orderState, nil
-}
-
-func (c *Client) GetSandboxOrderState(accountId string, orderId string) (*investapi.OrderState, error) {
-	orderState, err := c.SandboxService.GetSandboxOrderState(
-		newContextWithBearerToken(c.token),
-		&investapi.GetOrderStateRequest{
-			AccountId: accountId,
-			OrderId:   orderId,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return orderState, nil
-}
-
 func (c *Client) RunMarketDataStreamLoop(handler func(marketDataResp *investapi.MarketDataResponse)) error {
+	WaitForInternetConnection()
 	for {
 		marketDataResp, err := c.marketDataStream.Recv()
 		if err != nil {
@@ -284,20 +280,39 @@ func (c *Client) RunMarketDataStreamLoop(handler func(marketDataResp *investapi.
 	}
 }
 
-func (c *Client) SubscribeInfo(figi string) error {
-	instruments := []*investapi.InfoInstrument{
-		{Figi: figi},
-	}
-	err := c.marketDataStream.Send(&investapi.MarketDataRequest{Payload: &investapi.MarketDataRequest_SubscribeInfoRequest{
-		SubscribeInfoRequest: &investapi.SubscribeInfoRequest{
-			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_SUBSCRIBE,
-			Instruments:        instruments,
+func (c *Client) SandboxPayIn(accountId string, currency string, amount float64) (*investapi.SandboxPayInResponse, error) {
+	WaitForInternetConnection()
+	sandboxPayInResp, err := c.SandboxService.SandboxPayIn(
+		newContextWithBearerToken(c.token),
+		&investapi.SandboxPayInRequest{
+			AccountId: accountId,
+			Amount:    MoneyValueFromFloat(currency, amount),
 		},
-	}})
-	return err
+	)
+	if err != nil {
+		return nil, err
+	}
+	return sandboxPayInResp, nil
+}
+
+func (c *Client) ShareBy(idType investapi.InstrumentIdType, classCode string, id string) (*investapi.Share, error) {
+	WaitForInternetConnection()
+	shareResp, err := c.InstrumentsService.ShareBy(
+		newContextWithBearerToken(c.token),
+		&investapi.InstrumentRequest{
+			IdType:    idType,
+			ClassCode: classCode,
+			Id:        id,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return shareResp.Instrument, nil
 }
 
 func (c *Client) SubscribeCandles(figi string, interval investapi.SubscriptionInterval) error {
+	WaitForInternetConnection()
 	instruments := []*investapi.CandleInstrument{
 		{
 			Figi:     figi,
@@ -313,13 +328,14 @@ func (c *Client) SubscribeCandles(figi string, interval investapi.SubscriptionIn
 	return err
 }
 
-func (c *Client) UnsubscribeInfo(figi string) error {
+func (c *Client) SubscribeInfo(figi string) error {
+	WaitForInternetConnection()
 	instruments := []*investapi.InfoInstrument{
 		{Figi: figi},
 	}
 	err := c.marketDataStream.Send(&investapi.MarketDataRequest{Payload: &investapi.MarketDataRequest_SubscribeInfoRequest{
 		SubscribeInfoRequest: &investapi.SubscribeInfoRequest{
-			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_UNSUBSCRIBE,
+			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_SUBSCRIBE,
 			Instruments:        instruments,
 		},
 	}})
@@ -327,6 +343,7 @@ func (c *Client) UnsubscribeInfo(figi string) error {
 }
 
 func (c *Client) UnsubscribeCandles(figi string, interval investapi.SubscriptionInterval) error {
+	WaitForInternetConnection()
 	instruments := []*investapi.CandleInstrument{
 		{
 			Figi:     figi,
@@ -335,6 +352,20 @@ func (c *Client) UnsubscribeCandles(figi string, interval investapi.Subscription
 	}
 	err := c.marketDataStream.Send(&investapi.MarketDataRequest{Payload: &investapi.MarketDataRequest_SubscribeCandlesRequest{
 		SubscribeCandlesRequest: &investapi.SubscribeCandlesRequest{
+			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_UNSUBSCRIBE,
+			Instruments:        instruments,
+		},
+	}})
+	return err
+}
+
+func (c *Client) UnsubscribeInfo(figi string) error {
+	WaitForInternetConnection()
+	instruments := []*investapi.InfoInstrument{
+		{Figi: figi},
+	}
+	err := c.marketDataStream.Send(&investapi.MarketDataRequest{Payload: &investapi.MarketDataRequest_SubscribeInfoRequest{
+		SubscribeInfoRequest: &investapi.SubscribeInfoRequest{
 			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_UNSUBSCRIBE,
 			Instruments:        instruments,
 		},

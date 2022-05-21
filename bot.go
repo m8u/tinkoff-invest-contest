@@ -112,6 +112,8 @@ func (bot *Bot) runStream() {
 		}
 
 		log.Println("reopening market data stream...")
+
+		bot.client.InitMarketDataStream()
 	}
 }
 
@@ -216,13 +218,9 @@ func (bot *Bot) Serve(charts *Charts) {
 			newCandle := true
 			// Тиковый цикл (>=1 сек)
 			for !ShouldExit && bot.marketInfo.currentCandle.Time.AsTime() == currentCandleTS {
-				// абьюзим UsersService с целью проверки интернет-соединения (см. client.go:request())
-				if bot.isSandbox {
-					_, err = bot.client.GetSandboxAccounts()
-				} else {
-					_, err = bot.client.GetAccounts()
+				if newCandle {
+					WaitForInternetConnection()
 				}
-				MaybeCrash(err)
 
 				// обновляем последнюю свечку на графике
 				(*charts.Candles)[len(*charts.Candles)-1] = &investapi.HistoricCandle{

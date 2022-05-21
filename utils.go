@@ -21,7 +21,7 @@ func MaybeCrash(err error) {
 }
 
 func WaitForInternetConnection() {
-	client := http.Client{}
+	client := http.Client{Timeout: 5 * time.Second}
 	err := errors.New("")
 	for err != nil {
 		_, err = client.Get("https://clients3.google.com/")
@@ -32,6 +32,9 @@ func WaitForInternetConnection() {
 			NoInternetConnection = true
 			time.Sleep(10 * time.Second)
 		}
+	}
+	if NoInternetConnection {
+		log.Println("internet connection established")
 	}
 	NoInternetConnection = false
 }
