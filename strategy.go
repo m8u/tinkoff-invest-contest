@@ -1,8 +1,8 @@
 package main
 
 import (
-	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 	"math"
+	investapi "tinkoff-invest-contest/investAPI"
 )
 
 type StrategyParams struct {
@@ -16,21 +16,23 @@ type StrategyParams struct {
 }
 
 // bollinger вычисляет границы интервала Bollinger Bands
-func bollinger(candles []sdk.Candle, coef float64) (float64, float64) {
+func bollinger(candles []*investapi.HistoricCandle, coef float64) (float64, float64) {
 	var sum float64
 	n := float64(len(candles))
 
 	// вычисляем арифметическое среднее "типичных" цен
 	sum = 0
 	for _, candle := range candles {
-		sum += (candle.HighPrice + candle.LowPrice + candle.ClosePrice) / 3
+		sum += (FloatFromQuotation(candle.High) +
+			FloatFromQuotation(candle.Low) +
+			FloatFromQuotation(candle.Close)) / 3
 	}
 	mean := sum / n
 
 	// вычисляем стандартное отклонение
 	sum = 0
 	for _, candle := range candles {
-		sum += math.Pow(candle.ClosePrice-mean, 2)
+		sum += math.Pow(FloatFromQuotation(candle.Close)-mean, 2)
 	}
 	sd := math.Sqrt(sum / n)
 
@@ -56,7 +58,7 @@ func isBetweenIncl(samplePoint float64, bound1 float64, bound2 float64) bool {
 }
 
 // GetTradeSignal формирует рекомендацию в виде торгового сигнала (TradeSignal)
-func GetTradeSignal(strategyParams StrategyParams, testMode bool, currentCandle sdk.Candle, newCandle bool, charts *Charts) *TradeSignal {
+func GetTradeSignal(strategyParams StrategyParams, testMode bool, currentCandle *investapi.Candle, newCandle bool, charts *Charts) *TradeSignal {
 	lowerBound, upperBound := bollinger(
 		(*charts.Candles)[len(*charts.Candles)-strategyParams.Window:len(*charts.Candles)-1],
 		strategyParams.BollingerCoef,
@@ -70,25 +72,25 @@ func GetTradeSignal(strategyParams StrategyParams, testMode bool, currentCandle 
 		*charts.Intervals = append(*charts.Intervals, []float64{lowerBound, upperBound})
 	}
 
-	if isAroundPoint(currentCandle.ClosePrice, lowerBound, strategyParams.IntervalPointDeviation) ||
+	if isAroundPoint(FloatFromQuotation(currentCandle.Close), lowerBound, strategyParams.IntervalPointDeviation) ||
 		(testMode && // в тестовом режиме также проверяем топорным способом
 			isBetweenIncl(
 				lowerBound,
-				(*charts.Candles)[len(*charts.Candles)-2].ClosePrice,
-				currentCandle.ClosePrice,
+				FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
+				FloatFromQuotation(currentCandle.Close),
 			)) { // buy сигнал
 
-		return &TradeSignal{sdk.BUY}
+		return &TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_BUY}
 
-	} else if isAroundPoint(currentCandle.ClosePrice, upperBound, strategyParams.IntervalPointDeviation) ||
+	} else if isAroundPoint(FloatFromQuotation(currentCandle.Close), upperBound, strategyParams.IntervalPointDeviation) ||
 		(testMode &&
 			isBetweenIncl(
 				upperBound,
-				(*charts.Candles)[len(*charts.Candles)-2].ClosePrice,
-				currentCandle.ClosePrice,
+				FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
+				FloatFromQuotation(currentCandle.Close),
 			)) { // sell сигнал
 
-		return &TradeSignal{sdk.SELL}
+		return &TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}
 
 	return nil

@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 	"github.com/joho/godotenv"
 	"io"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	investapi "tinkoff-invest-contest/investAPI"
 )
 
 const AppName = "m8u"
@@ -40,14 +40,10 @@ func main() {
 	)
 	var candleInterval = flag.String("candle_interval", "1min",
 		"Candle interval. Possible values are:\n"+
-			"'1min', "+
-			//"'2min', "+
-			//"'3min', "+
-			"'5min', "+
-			//"'10min', "+
-			"'15min', "+
-			//"'30min', "+
-			"'hour'",
+			"'1min' (realtime trading available)\n"+
+			"'5min' (realtime trading available)\n"+
+			"'15min'\n"+
+			"'hour'\n",
 	)
 	var window = flag.Int("window", 60,
 		"Bollinger Bands MA window size",
@@ -63,7 +59,7 @@ func main() {
 	)
 	flag.Parse()
 
-	if _, ok := CandleIntervalsToDurations[sdk.CandleInterval(*candleInterval)]; !ok {
+	if _, ok := CandleIntervalsToDurations[CandleIntervalsV1NamesToValues[*candleInterval]]; !ok {
 		log.Fatalln("please choose one of supported candle intervals\n" +
 			"Try '--help' for more info")
 	}
@@ -86,7 +82,7 @@ func main() {
 	log.SetOutput(multiWriter)
 
 	charts := Charts{
-		Candles:        new([]sdk.Candle),
+		Candles:        new([]*investapi.HistoricCandle),
 		Intervals:      new([][]float64),
 		Flags:          new([][]ChartsTradeFlag),
 		BalanceHistory: new([]float64),
@@ -111,7 +107,7 @@ func main() {
 			token,
 			*figi,
 			*testDays,
-			sdk.CandleInterval(*candleInterval),
+			CandleIntervalsV1NamesToValues[*candleInterval],
 			StrategyParams{
 				Window:                 *window,
 				BollingerCoef:          *bollingerCoef,
@@ -140,7 +136,7 @@ func main() {
 			token,
 			*startMoney,
 			*figi,
-			sdk.CandleInterval(*candleInterval),
+			CandleIntervalsV1NamesToValues[*candleInterval],
 			*fee,
 			StrategyParams{
 				Window:                 *window,
@@ -166,7 +162,7 @@ func main() {
 		bot := NewCombatBot(
 			token,
 			*figi,
-			sdk.CandleInterval(*candleInterval),
+			CandleIntervalsV1NamesToValues[*candleInterval],
 			StrategyParams{
 				Window:                 *window,
 				BollingerCoef:          *bollingerCoef,

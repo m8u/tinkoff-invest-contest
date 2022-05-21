@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
-	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/opts"
 	"github.com/go-echarts/go-echarts/v2/types"
 	"log"
 	"net/http"
 	"time"
+	investapi "tinkoff-invest-contest/investAPI"
 )
 
 // Charts - стркуктура, хранящая данные для графиков ECharts
 type Charts struct {
-	Candles        *[]sdk.Candle
+	Candles        *[]*investapi.HistoricCandle
 	Intervals      *[][]float64
 	Flags          *[][]ChartsTradeFlag
 	BalanceHistory *[]float64
@@ -23,9 +23,9 @@ type Charts struct {
 
 // ChartsTradeFlag - структура, описывающая отметку о торговом сигнале на графике
 type ChartsTradeFlag struct {
-	Direction   sdk.OperationType
+	Direction   investapi.OrderDirection
 	Price       float64
-	Quantity    int
+	Quantity    int64
 	CandleIndex int
 }
 
@@ -58,22 +58,27 @@ func (c *Charts) HandleTradingChart(w http.ResponseWriter, _ *http.Request) {
 	lineYUpper := make([]opts.LineData, 0)
 	flagContainerIndex := 0
 	for i, candle := range *c.Candles {
-		klineX = append(klineX, candle.TS)
-		klineY = append(klineY, opts.KlineData{Value: []float64{candle.OpenPrice, candle.ClosePrice, candle.LowPrice, candle.HighPrice}})
+		klineX = append(klineX, candle.Time.AsTime())
+		klineY = append(klineY, opts.KlineData{Value: []float64{
+			FloatFromQuotation(candle.Open),
+			FloatFromQuotation(candle.Close),
+			FloatFromQuotation(candle.Low),
+			FloatFromQuotation(candle.High),
+		}})
 
 		if flagContainerIndex < len(*c.Flags) && i == (*c.Flags)[flagContainerIndex][0].CandleIndex {
 			buyAvgPrice, sellAvgPrice := 0.0, 0.0
-			buyQuantity, sellQuantity := 0, 0
+			var buyQuantity, sellQuantity int64 = 0, 0
 			for _, flag := range (*c.Flags)[flagContainerIndex] {
 				switch flag.Direction {
-				case sdk.BUY:
+				case investapi.OrderDirection_ORDER_DIRECTION_BUY:
 					buyAvgPrice += flag.Price
 					if buyQuantity > 0 {
 						buyAvgPrice /= 2
 					}
 					buyQuantity += flag.Quantity
 					break
-				case sdk.SELL:
+				case investapi.OrderDirection_ORDER_DIRECTION_SELL:
 					sellAvgPrice += flag.Price
 					if sellQuantity > 0 {
 						sellAvgPrice /= 2

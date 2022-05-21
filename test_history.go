@@ -3,17 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 	"io/ioutil"
 	"log"
 	"math"
 	"os"
 	"time"
+	investapi "tinkoff-invest-contest/investAPI"
 )
 
 // getHistoricalCandles подгружает из кэша или, если нет кэшированных, то загружает и кэширует исторические свечи
-func getHistoricalCandles(client *RestClientV2, figi string, daysBeforeNow int, candleInterval sdk.CandleInterval) []sdk.Candle {
-	var candles []sdk.Candle
+func getHistoricalCandles(client *Client, figi string, daysBeforeNow int, candleInterval investapi.CandleInterval) []*investapi.HistoricCandle {
+	var candles []*investapi.HistoricCandle
 	_, err := os.ReadDir("cache")
 	if err != nil {
 		err = os.Mkdir("cache", 0775)
@@ -25,10 +25,10 @@ func getHistoricalCandles(client *RestClientV2, figi string, daysBeforeNow int, 
 		log.Println("Downloading candles...")
 		for day := daysBeforeNow; day >= 0; day-- {
 			portion, err := client.GetCandles(
+				figi,
 				time.Now().AddDate(0, 0, -day-1),
 				time.Now().AddDate(0, 0, -day),
 				candleInterval,
-				figi,
 			)
 			MaybeCrash(err)
 			candles = append(candles, portion...)
@@ -41,46 +41,46 @@ func getHistoricalCandles(client *RestClientV2, figi string, daysBeforeNow int, 
 
 		start := len(candles)
 		for i := range candles {
-			if candles[len(candles)-1-i].TS.Unix() <= time.Now().AddDate(0, 0, -daysBeforeNow).Unix() {
+			if candles[len(candles)-1-i].Time.AsTime().Unix() <= time.Now().AddDate(0, 0, -daysBeforeNow).Unix() {
 				break
 			}
 			start--
 		}
 		candles = candles[start:]
 
-		candleDuration := candles[1].TS.Sub(candles[0].TS)
+		candleDuration := candles[1].Time.AsTime().Sub(candles[0].Time.AsTime())
 		if err != nil {
 			log.Fatalln(err)
 		}
-		if candles[0].TS.Unix() > time.Now().AddDate(0, 0, -daysBeforeNow).Round(candleDuration).Unix() {
-			var missingCandles []sdk.Candle
-			for day := daysBeforeNow; day >= int(time.Since(candles[0].TS).Hours()/24); day-- {
+		if candles[0].Time.AsTime().Unix() > time.Now().AddDate(0, 0, -daysBeforeNow).Round(candleDuration).Unix() {
+			var missingCandles []*investapi.HistoricCandle
+			for day := daysBeforeNow; day >= int(time.Since(candles[0].Time.AsTime()).Hours()/24); day-- {
 				portion, err := client.GetCandles(
+					figi,
 					time.Now().AddDate(0, 0, -day-1),
 					time.Now().AddDate(0, 0, -day),
 					candleInterval,
-					figi,
 				)
 				MaybeCrash(err)
 				missingCandles = append(missingCandles, portion...)
 			}
 			missingEnd := 0
 			for _, currentCandle := range missingCandles {
-				if currentCandle.TS == candles[0].TS {
+				if currentCandle.Time.AsTime() == candles[0].Time.AsTime() {
 					break
 				}
 				missingEnd++
 			}
 			candles = append(missingCandles[:missingEnd], candles...)
 		}
-		if candles[len(candles)-1].TS.Unix() < time.Now().Round(candleDuration).Unix() {
-			var missingCandles []sdk.Candle
-			for day := int(time.Since(candles[len(candles)-1].TS).Hours() / 24); day >= 0; day-- {
+		if candles[len(candles)-1].Time.AsTime().Unix() < time.Now().Round(candleDuration).Unix() {
+			var missingCandles []*investapi.HistoricCandle
+			for day := int(time.Since(candles[len(candles)-1].Time.AsTime()).Hours() / 24); day >= 0; day-- {
 				portion, err := client.GetCandles(
+					figi,
 					time.Now().AddDate(0, 0, -day-1),
 					time.Now().AddDate(0, 0, -day),
 					candleInterval,
-					figi,
 				)
 				MaybeCrash(err)
 				missingCandles = append(missingCandles, portion...)
@@ -88,7 +88,7 @@ func getHistoricalCandles(client *RestClientV2, figi string, daysBeforeNow int, 
 			missingStart := 0
 			for _, currentCandle := range missingCandles {
 				missingStart++
-				if currentCandle.TS == candles[len(candles)-1].TS {
+				if currentCandle.Time.AsTime() == candles[len(candles)-1].Time.AsTime() {
 					break
 				}
 			}
@@ -111,11 +111,11 @@ func getHistoricalCandles(client *RestClientV2, figi string, daysBeforeNow int, 
 type testAccount struct {
 	freeMoney   float64
 	lockedMoney float64
-	lotsHave    int
+	lotsHave    int64
 }
 
-func testBuy(price float64, quantity int, account *testAccount) {
-	for i := 0; i < quantity; i++ {
+func testBuy(price float64, quantity int64, account *testAccount) {
+	for i := 0; i < int(quantity); i++ {
 		if account.lotsHave < 0 {
 			account.lockedMoney -= price
 		} else {
@@ -127,8 +127,8 @@ func testBuy(price float64, quantity int, account *testAccount) {
 	account.lockedMoney = 0
 }
 
-func testSell(price float64, quantity int, account *testAccount) {
-	for i := 0; i < quantity; i++ {
+func testSell(price float64, quantity int64, account *testAccount) {
+	for i := 0; i < int(quantity); i++ {
 		if account.lotsHave > 0 {
 			account.freeMoney += price
 		} else {
@@ -139,7 +139,7 @@ func testSell(price float64, quantity int, account *testAccount) {
 }
 
 // TestOnHistoricalData тестирует стратегию на исторических данных по заданному инструменту
-func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleInterval sdk.CandleInterval,
+func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleInterval investapi.CandleInterval,
 	strategyParams StrategyParams, startBalance float64, fee float64, allowMargin bool, charts *Charts) {
 	account := &testAccount{
 		freeMoney:   startBalance,
@@ -149,23 +149,23 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 
 	*charts.StartBalance = startBalance
 
-	client := RestClientV2{token: token, appname: AppName}
+	client := NewClient(token)
 
-	share, err := client.ShareBy(FIGI, "", figi)
+	share, err := client.ShareBy(investapi.InstrumentIdType_INSTRUMENT_ID_TYPE_FIGI, "", figi)
 	MaybeCrash(err)
 
 	if allowMargin &&
-		((share.Instrument.Dshort.Units == "0" && share.Instrument.Dshort.Nano == 0) ||
-			(share.Instrument.Dlong.Units == "0" && share.Instrument.Dlong.Nano == 0)) {
-		log.Fatalf("can't margin-trade %v (%v)", share.Instrument.Ticker, figi)
+		((share.Dshort.Units == 0 && share.Dshort.Nano == 0) ||
+			(share.Dlong.Units == 0 && share.Dlong.Nano == 0)) {
+		log.Fatalf("can't margin-trade %v (%v)", share.Ticker, figi)
 	}
 
 	log.Printf("\n"+
 		"instrument: %v (%v)\n"+
 		"start balance: %+v",
-		share.Instrument.Ticker, figi, account.freeMoney)
+		share.Ticker, figi, account.freeMoney)
 
-	candles := getHistoricalCandles(&client, figi, daysBeforeNow, candleInterval)
+	candles := getHistoricalCandles(client, figi, daysBeforeNow, candleInterval)
 	*charts.Candles = append(*charts.Candles, candles[:strategyParams.Window]...)
 
 	for i := strategyParams.Window; i < len(candles); i++ {
@@ -174,56 +174,81 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 		tradeSignal := GetTradeSignal(
 			strategyParams,
 			true,
-			candles[i],
+			&investapi.Candle{
+				Open:  candles[i].Open,
+				High:  candles[i].High,
+				Low:   candles[i].Low,
+				Close: candles[i].Close,
+			},
 			true,
 			charts,
 		)
 
 		if tradeSignal != nil {
 			var maxDealValue float64
-			var lots int
+			var lots int64
 			switch tradeSignal.Direction {
-			case sdk.BUY:
+			case investapi.OrderDirection_ORDER_DIRECTION_BUY:
 				if allowMargin {
-					liquidPortfolio := account.freeMoney + float64(account.lotsHave)*candles[i].ClosePrice*float64(share.Instrument.Lot)
-					startMargin := float64(account.lotsHave) * candles[i].ClosePrice * float64(share.Instrument.Lot) * share.Instrument.Dlong.ToFloat()
-					maxDealValue = (liquidPortfolio - startMargin) / share.Instrument.Dlong.ToFloat()
+					liquidPortfolio := account.freeMoney +
+						float64(account.lotsHave)*
+							FloatFromQuotation(candles[i].Close)*
+							float64(share.Lot)
+					startMargin := float64(account.lotsHave) *
+						FloatFromQuotation(candles[i].Close) *
+						float64(share.Lot) *
+						FloatFromQuotation(share.Dlong)
+					maxDealValue = (liquidPortfolio - startMargin) / FloatFromQuotation(share.Dlong)
 				} else {
 					maxDealValue = account.freeMoney
 				}
-				lots = int(maxDealValue / (candles[i].ClosePrice * float64(share.Instrument.Lot)))
+				lots = int64(maxDealValue / (FloatFromQuotation(candles[i].Close) * float64(share.Lot)))
 				if lots == 0 {
 					continue
 				}
-				testBuy(candles[i].ClosePrice*float64(share.Instrument.Lot)*(1+fee), lots, account)
+				testBuy(FloatFromQuotation(candles[i].Close)*float64(share.Lot)*(1+fee),
+					lots, account)
 				break
-			case sdk.SELL:
+			case investapi.OrderDirection_ORDER_DIRECTION_SELL:
 				if allowMargin {
 					var liquidPortfolio, startMargin float64
 					if account.lotsHave >= 0 { // TODO: добавить маржин-колл
-						liquidPortfolio = account.freeMoney + float64(account.lotsHave)*candles[i].ClosePrice*float64(share.Instrument.Lot)
-						startMargin = float64(account.lotsHave) * candles[i].ClosePrice * float64(share.Instrument.Lot) * share.Instrument.Dlong.ToFloat()
+						liquidPortfolio = account.freeMoney +
+							float64(account.lotsHave)*
+								FloatFromQuotation(candles[i].Close)*
+								float64(share.Lot)
+						startMargin = float64(account.lotsHave) *
+							FloatFromQuotation(candles[i].Close) *
+							float64(share.Lot) *
+							FloatFromQuotation(share.Dlong)
 					} else {
-						liquidPortfolio = account.freeMoney + account.lockedMoney + float64(account.lotsHave)*candles[i].ClosePrice*float64(share.Instrument.Lot)
-						startMargin = math.Abs(float64(account.lotsHave)) * candles[i].ClosePrice * float64(share.Instrument.Lot) * share.Instrument.Dshort.ToFloat()
+						liquidPortfolio = account.freeMoney + account.lockedMoney +
+							float64(account.lotsHave)*
+								FloatFromQuotation(candles[i].Close)*
+								float64(share.Lot)
+						startMargin = math.Abs(float64(account.lotsHave)) *
+							FloatFromQuotation(candles[i].Close) *
+							float64(share.Lot) *
+							FloatFromQuotation(share.Dshort)
 					}
-					maxDealValue = (liquidPortfolio - startMargin) / share.Instrument.Dshort.ToFloat()
-					lots = int(maxDealValue / (candles[i].ClosePrice * float64(share.Instrument.Lot)))
+					maxDealValue = (liquidPortfolio - startMargin) / FloatFromQuotation(share.Dshort)
+					lots = int64(maxDealValue / (FloatFromQuotation(candles[i].Close) * float64(share.Lot)))
 				} else {
 					lots = account.lotsHave
 				}
 				if lots == 0 {
 					continue
 				}
-				testSell(candles[i].ClosePrice*float64(share.Instrument.Lot)*(1-fee), lots, account)
+				testSell(FloatFromQuotation(candles[i].Close)*float64(share.Lot)*(1-fee),
+					lots, account)
 				break
 			}
 			*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
 			(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
 				ChartsTradeFlag{
 					Direction:   tradeSignal.Direction,
-					Price:       candles[i].ClosePrice,
-					Quantity:    lots * share.Instrument.Lot,
+					Price:       FloatFromQuotation(candles[i].Close),
+					Quantity:    lots * int64(share.Lot),
 					CandleIndex: len(*charts.Candles) - 1,
 				},
 			)
@@ -236,26 +261,28 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 		*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
 		(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
 			ChartsTradeFlag{
-				Direction:   sdk.BUY,
-				Price:       candles[len(candles)-1].ClosePrice,
+				Direction:   investapi.OrderDirection_ORDER_DIRECTION_BUY,
+				Price:       FloatFromQuotation(candles[len(candles)-1].Close),
 				Quantity:    -account.lotsHave,
 				CandleIndex: len(candles) - 1,
 			},
 		)
-		testBuy(candles[len(candles)-1].ClosePrice, -account.lotsHave, account)
+		testBuy(FloatFromQuotation(candles[len(candles)-1].Close),
+			-account.lotsHave, account)
 		*charts.BalanceHistory = append(*charts.BalanceHistory, account.freeMoney)
 	} else if account.lotsHave > 0 {
 		log.Printf("!!! WARNING: force closing longs")
 		*charts.Flags = append(*charts.Flags, make([]ChartsTradeFlag, 0))
 		(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
 			ChartsTradeFlag{
-				Direction:   sdk.SELL,
-				Price:       candles[len(candles)-1].ClosePrice,
+				Direction:   investapi.OrderDirection_ORDER_DIRECTION_SELL,
+				Price:       FloatFromQuotation(candles[len(candles)-1].Close),
 				Quantity:    account.lotsHave,
 				CandleIndex: len(candles) - 1,
 			},
 		)
-		testSell(candles[len(candles)-1].ClosePrice, account.lotsHave, account)
+		testSell(FloatFromQuotation(candles[len(candles)-1].Close),
+			account.lotsHave, account)
 		*charts.BalanceHistory = append(*charts.BalanceHistory, account.freeMoney)
 	}
 	log.Printf("\n"+
