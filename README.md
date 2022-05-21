@@ -1,6 +1,6 @@
 # tinkoff-invest-contest
-Торговый робот для Tinkoff Invest Robot Contest (https://github.com/Tinkoff/invest-robot-contest).<br><br>
-Данный робот использует Tinkoff Invest API (https://github.com/Tinkoff/investAPI) (API версии 2), 
+Торговый робот для участия в [Tinkoff Invest Robot Contest](https://github.com/Tinkoff/invest-robot-contest).<br><br>
+Данный робот использует [Tinkoff Invest API](https://github.com/Tinkoff/investAPI) (API версии 2), 
 выполняя REST-запросы через прокси Swagger.<br>
 Робот изначально был написан с использованием OpenAPI Go SDK 
 (https://github.com/Tinkoff/invest-openapi-go-sdk), который разработан под OpenAPI Тинькофф инвестиций (API версии 1), 
