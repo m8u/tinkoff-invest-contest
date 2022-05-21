@@ -2,6 +2,7 @@ package main
 
 import (
 	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
+	"github.com/google/uuid"
 	"log"
 	"reflect"
 	"strconv"
@@ -252,7 +253,7 @@ func (bot *Bot) Serve(charts *Charts) {
 						log.Printf("lots have: %+v; money have: %+v", lotsHave, moneyHave)
 
 						orderPrice = bot.marketInfo.currentCandle.ClosePrice
-						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.BUY, bot.account.ID, bot.isSandbox)
+						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.BUY, bot.account.ID, uuid.New().String(), bot.isSandbox)
 						if err != nil {
 							log.Printf("!!! order error: %v", err)
 						}
@@ -280,7 +281,7 @@ func (bot *Bot) Serve(charts *Charts) {
 						log.Printf("lots have: %+v; money have: %+v", lotsHave, moneyHave)
 
 						orderPrice = bot.marketInfo.currentCandle.ClosePrice
-						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.SELL, bot.account.ID, bot.isSandbox)
+						order, err := bot.restClient.PostMarketOrder(bot.figi, lots, sdk.SELL, bot.account.ID, uuid.New().String(), bot.isSandbox)
 						if err != nil {
 							log.Printf("!!! order error: %v", err)
 						}

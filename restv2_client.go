@@ -428,7 +428,7 @@ func (c *RestClientV2) OpenSandboxAccount() (sdk.Account, error) {
 	return sdk.Account{ID: accountResp.ID}, nil
 }
 
-func (c *RestClientV2) PostMarketOrder(figi string, lots int, direction sdk.OperationType, accountId string, isSandbox bool) (sdk.PlacedOrder, error) {
+func (c *RestClientV2) PostMarketOrder(figi string, lots int, direction sdk.OperationType, accountId string, orderId string, isSandbox bool) (sdk.PlacedOrder, error) {
 	path := ApiUrl
 	if isSandbox {
 		path += ".SandboxService/PostSandboxOrder"
@@ -455,7 +455,7 @@ func (c *RestClientV2) PostMarketOrder(figi string, lots int, direction sdk.Oper
 		Direction: orderDirectionsV1ToV2[direction],
 		AccountId: accountId,
 		OrderType: "ORDER_TYPE_MARKET",
-		OrderId:   "",
+		OrderId:   orderId,
 	}
 
 	respBody, err := c.request(path, payload)
