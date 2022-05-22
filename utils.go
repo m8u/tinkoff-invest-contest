@@ -68,6 +68,13 @@ var CandleIntervalsV1NamesToValues = map[string]investapi.CandleInterval{
 	"hour":  investapi.CandleInterval_CANDLE_INTERVAL_HOUR,
 	"day":   investapi.CandleInterval_CANDLE_INTERVAL_DAY,
 }
+var CandleIntervalsValuesToV1Names = map[investapi.CandleInterval]string{
+	investapi.CandleInterval_CANDLE_INTERVAL_1_MIN:  "1min",
+	investapi.CandleInterval_CANDLE_INTERVAL_5_MIN:  "5min",
+	investapi.CandleInterval_CANDLE_INTERVAL_15_MIN: "15min",
+	investapi.CandleInterval_CANDLE_INTERVAL_HOUR:   "hour",
+	investapi.CandleInterval_CANDLE_INTERVAL_DAY:    "day",
+}
 
 var CandleIntervalsToDurations = map[investapi.CandleInterval]time.Duration{
 	investapi.CandleInterval_CANDLE_INTERVAL_1_MIN:  time.Minute,

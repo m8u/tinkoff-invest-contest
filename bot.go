@@ -185,13 +185,26 @@ func (bot *Bot) Serve(charts *Charts) {
 		for !ShouldExit && bot.marketInfo.tradingStatus.TradingStatus ==
 			investapi.SecurityTradingStatus_SECURITY_TRADING_STATUS_NORMAL_TRADING {
 			if newDay {
-				log.Printf("\n"+
-					"NEW TRADING DAY STARTED\n"+
+				log.Printf("NEW TRADING DAY STARTED\n"+
 					"instrument: %v (%v)\n"+
-					"allow margin: %t\n"+
+					"bollinger window: %v\n"+
+					"bollinger coef: %v\n"+
+					"bollinger point dev.: %v\n"+
+					"candle interval: %v\n"+
+					"allow margin: %v\n"+
+					"fee: %v\n"+
 					"money have: %+v\n"+
 					"lots have: %+v",
-					share.Ticker, bot.figi, bot.allowMargin, moneyHave, lotsHave)
+					share.Ticker,
+					bot.figi,
+					bot.strategyParams.Window,
+					bot.strategyParams.BollingerCoef,
+					bot.strategyParams.IntervalPointDeviation,
+					CandleIntervalsValuesToV1Names[bot.candleInterval],
+					bot.allowMargin,
+					bot.fee,
+					moneyHave,
+					lotsHave)
 			}
 
 			*charts.Candles = append(*charts.Candles, &investapi.HistoricCandle{

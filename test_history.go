@@ -164,8 +164,24 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 
 	log.Printf("\n"+
 		"instrument: %v (%v)\n"+
+		"bollinger window: %v\n"+
+		"bollinger coef: %v\n"+
+		"bollinger point dev.: %v\n"+
+		"candle interval: %v\n"+
+		"days: %v\n"+
+		"allow margin: %v\n"+
+		"fee: %v\n"+
 		"start balance: %+v",
-		share.Ticker, figi, account.freeMoney)
+		share.Ticker,
+		figi,
+		strategyParams.Window,
+		strategyParams.BollingerCoef,
+		strategyParams.IntervalPointDeviation,
+		CandleIntervalsValuesToV1Names[candleInterval],
+		daysBeforeNow,
+		allowMargin,
+		fee,
+		account.freeMoney)
 
 	candles := getHistoricalCandles(client, figi, daysBeforeNow, candleInterval)
 	*charts.Candles = append(*charts.Candles, candles[:strategyParams.Window]...)
