@@ -83,6 +83,7 @@ func NewCombatBot(token string, figi string, candleInterval investapi.CandleInte
 
 // runStream запускает цикл чтения ивентов MarketDataStream, который самовосстанавливается в случае потери соединения
 func (bot *Bot) runStream() {
+	bot.client.InitMarketDataStream()
 	for !ShouldExit {
 		err := bot.client.SubscribeInfo(bot.figi)
 		MaybeCrash(err)

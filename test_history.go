@@ -39,6 +39,7 @@ func getHistoricalCandles(client *Client, figi string, daysBeforeNow int, candle
 			log.Fatalln(err)
 		}
 
+		// определяем начало нужного нам временного отрезка
 		start := len(candles)
 		for i := range candles {
 			if candles[len(candles)-1-i].Time.AsTime().Unix() <= time.Now().AddDate(0, 0, -daysBeforeNow).Unix() {
@@ -52,6 +53,7 @@ func getHistoricalCandles(client *Client, figi string, daysBeforeNow int, candle
 		if err != nil {
 			log.Fatalln(err)
 		}
+		// догружаем недостающие свечи
 		if candles[0].Time.AsTime().Unix() > time.Now().AddDate(0, 0, -daysBeforeNow).Round(candleDuration).Unix() {
 			var missingCandles []*investapi.HistoricCandle
 			for day := daysBeforeNow; day >= int(time.Since(candles[0].Time.AsTime()).Hours()/24); day-- {

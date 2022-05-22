@@ -72,23 +72,24 @@ func GetTradeSignal(strategyParams StrategyParams, testMode bool, currentCandle 
 		*charts.Intervals = append(*charts.Intervals, []float64{lowerBound, upperBound})
 	}
 
+	// Сигнал к покупке
 	if isAroundPoint(FloatFromQuotation(currentCandle.Close), lowerBound, strategyParams.IntervalPointDeviation) ||
 		(testMode && // в тестовом режиме также проверяем топорным способом
 			isBetweenIncl(
 				lowerBound,
 				FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
 				FloatFromQuotation(currentCandle.Close),
-			)) { // buy сигнал
+			)) {
 
 		return &TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_BUY}
-
+		// Сигнал к продаже
 	} else if isAroundPoint(FloatFromQuotation(currentCandle.Close), upperBound, strategyParams.IntervalPointDeviation) ||
 		(testMode &&
 			isBetweenIncl(
 				upperBound,
 				FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
 				FloatFromQuotation(currentCandle.Close),
-			)) { // sell сигнал
+			)) {
 
 		return &TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}

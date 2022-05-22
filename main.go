@@ -175,7 +175,7 @@ func main() {
 
 		break
 	default:
-		log.Println("no mode specified\n" +
+		log.Println("no mode specified, or there is no such mode\n" +
 			"Try '--help' for more info")
 		os.Exit(0)
 	}
@@ -195,6 +195,7 @@ func main() {
 		}()
 	}
 
+	// запускаем сервер с графиками
 	http.HandleFunc("/", charts.HandleTradingChart)
 	http.HandleFunc("/balance", charts.HandleBalanceChart)
 	log.Println("Starting echarts server at localhost:8081 (press Ctrl-C to exit)")

@@ -21,7 +21,7 @@ type Charts struct {
 	TestMode       *bool
 }
 
-// ChartsTradeFlag - структура, описывающая отметку о торговом сигнале на графике
+// ChartsTradeFlag - структура, описывающая отметку о совершенной сделке на графике
 type ChartsTradeFlag struct {
 	Direction   investapi.OrderDirection
 	Price       float64

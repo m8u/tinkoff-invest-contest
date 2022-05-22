@@ -12,7 +12,7 @@ import (
 )
 
 // MaybeCrash выводит подробности об ошибке и завершает программу с кодом 1
-// если ошибка - не nil
+// если ошибка != nil
 func MaybeCrash(err error) {
 	if err != nil {
 		_, filename, line, _ := runtime.Caller(1)
@@ -20,6 +20,7 @@ func MaybeCrash(err error) {
 	}
 }
 
+// WaitForInternetConnection пингует clients3.google.com, блокируя тред до успешного соединения
 func WaitForInternetConnection() {
 	client := http.Client{Timeout: 5 * time.Second}
 	err := errors.New("")
@@ -91,11 +92,6 @@ func MoneyValueFromFloat(currency string, value float64) *investapi.MoneyValue {
 
 func FloatFromMoneyValue(m *investapi.MoneyValue) float64 {
 	return float64(m.Units) + float64(m.Nano)/math.Pow(10, float64(len(fmt.Sprint(m.Nano))))
-}
-
-type Quotation struct {
-	Units string
-	Nano  int32
 }
 
 func QuotationFromFloat(value float64) *investapi.Quotation {
