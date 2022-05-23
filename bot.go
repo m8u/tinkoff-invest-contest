@@ -45,7 +45,7 @@ func NewSandboxBot(token string, money float64, figi string, candleInterval inve
 	MaybeCrash(err)
 	bot.account = &investapi.Account{Id: accountResp.AccountId}
 
-	_, err = bot.client.SandboxPayIn(bot.account.Id, "rub", money)
+	_, err = bot.client.SandboxPayIn(bot.account.Id, "RUB", money)
 	MaybeCrash(err)
 
 	bot.token = token
@@ -143,7 +143,7 @@ func (bot *Bot) Serve(charts *Charts) {
 	}
 	MaybeCrash(err)
 	for _, money := range positions.Money {
-		if money.Currency == "rub" {
+		if money.Currency == "RUB" {
 			*charts.StartBalance = FloatFromMoneyValue(money)
 		}
 	}
@@ -168,7 +168,7 @@ func (bot *Bot) Serve(charts *Charts) {
 
 		var moneyHave float64
 		for _, money := range positions.Money {
-			if money.Currency == "rub" {
+			if money.Currency == "RUB" {
 				moneyHave = FloatFromMoneyValue(money)
 			}
 		}
@@ -184,30 +184,27 @@ func (bot *Bot) Serve(charts *Charts) {
 		// торгуем только в основной период
 		for !ShouldExit && bot.marketInfo.tradingStatus.TradingStatus ==
 			investapi.SecurityTradingStatus_SECURITY_TRADING_STATUS_NORMAL_TRADING {
-			for bot.marketInfo.currentCandle == nil {
-				// подождем пока не прилетит свеча из стрима
-			}
 			if newDay {
-			log.Printf("NEW TRADING DAY STARTED\n"+
-				"instrument: %v (%v)\n"+
-				"bollinger window: %v\n"+
-				"bollinger coef: %v\n"+
-				"bollinger point dev.: %v\n"+
-				"candle interval: %v\n"+
-				"allow margin: %v\n"+
-				"fee: %v\n"+
-				"money have: %+v\n"+
-				"lots have: %+v",
-				share.Ticker,
-				bot.figi,
-				bot.strategyParams.Window,
-				bot.strategyParams.BollingerCoef,
-				bot.strategyParams.IntervalPointDeviation,
-				CandleIntervalsValuesToV1Names[bot.candleInterval],
-				bot.allowMargin,
-				bot.fee,
-				moneyHave,
-				lotsHave)
+				log.Printf("NEW TRADING DAY STARTED\n"+
+					"instrument: %v (%v)\n"+
+					"bollinger window: %v\n"+
+					"bollinger coef: %v\n"+
+					"bollinger point dev.: %v\n"+
+					"candle interval: %v\n"+
+					"allow margin: %v\n"+
+					"fee: %v\n"+
+					"money have: %+v\n"+
+					"lots have: %+v",
+					share.Ticker,
+					bot.figi,
+					bot.strategyParams.Window,
+					bot.strategyParams.BollingerCoef,
+					bot.strategyParams.IntervalPointDeviation,
+					CandleIntervalsValuesToV1Names[bot.candleInterval],
+					bot.allowMargin,
+					bot.fee,
+					moneyHave,
+					lotsHave)
 			}
 
 			*charts.Candles = append(*charts.Candles, &investapi.HistoricCandle{
@@ -265,7 +262,7 @@ func (bot *Bot) Serve(charts *Charts) {
 					MaybeCrash(err)
 
 					for _, money := range positions.Money {
-						if money.Currency == "rub" {
+						if money.Currency == "RUB" {
 							moneyHave = FloatFromMoneyValue(money)
 						}
 					}
