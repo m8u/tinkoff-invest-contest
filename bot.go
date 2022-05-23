@@ -45,7 +45,7 @@ func NewSandboxBot(token string, money float64, figi string, candleInterval inve
 	MaybeCrash(err)
 	bot.account = &investapi.Account{Id: accountResp.AccountId}
 
-	_, err = bot.client.SandboxPayIn(bot.account.Id, "RUB", money)
+	_, err = bot.client.SandboxPayIn(bot.account.Id, "rub", money)
 	MaybeCrash(err)
 
 	bot.token = token
@@ -143,13 +143,16 @@ func (bot *Bot) Serve(charts *Charts) {
 	}
 	MaybeCrash(err)
 	for _, money := range positions.Money {
-		if money.Currency == "RUB" {
+		if money.Currency == "rub" {
 			*charts.StartBalance = FloatFromMoneyValue(money)
 		}
 	}
 
 	// Дневной цикл
 	for !ShouldExit {
+		for bot.marketInfo.currentCandle == nil {
+			// подождем пока не прилетит первая свеча из стрима
+		}
 		share, err := bot.client.ShareBy(investapi.InstrumentIdType_INSTRUMENT_ID_TYPE_FIGI, "", bot.figi)
 		MaybeCrash(err)
 
@@ -168,7 +171,7 @@ func (bot *Bot) Serve(charts *Charts) {
 
 		var moneyHave float64
 		for _, money := range positions.Money {
-			if money.Currency == "RUB" {
+			if money.Currency == "rub" {
 				moneyHave = FloatFromMoneyValue(money)
 			}
 		}
@@ -262,7 +265,7 @@ func (bot *Bot) Serve(charts *Charts) {
 					MaybeCrash(err)
 
 					for _, money := range positions.Money {
-						if money.Currency == "RUB" {
+						if money.Currency == "rub" {
 							moneyHave = FloatFromMoneyValue(money)
 						}
 					}
