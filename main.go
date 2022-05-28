@@ -103,7 +103,7 @@ func main() {
 
 		*charts.TestMode = true
 		log.Println("Testing on historical data...")
-		TestOnHistoricalData(
+		go TestOnHistoricalData(
 			token,
 			*figi,
 			*testDays,

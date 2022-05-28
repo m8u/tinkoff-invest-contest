@@ -231,7 +231,7 @@ func TestOnHistoricalData(token string, figi string, daysBeforeNow int, candleIn
 				if allowMargin {
 					var liquidPortfolio, startMargin float64
 					if account.lotsHave >= 0 { // TODO: добавить маржин-колл
-						liquidPortfolio = account.freeMoney +
+						liquidPortfolio = math.Abs(account.freeMoney) +
 							float64(account.lotsHave)*
 								FloatFromQuotation(candles[i].Close)*
 								float64(share.Lot)
