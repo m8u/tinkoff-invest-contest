@@ -1,11 +1,13 @@
-package main
+package strategy
 
 import (
 	"math"
-	investapi "tinkoff-invest-contest/investAPI"
+	generated2 "tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/metrics"
+	"tinkoff-invest-contest/internal/utils"
 )
 
-type StrategyParams struct {
+type BollingerParams struct {
 	// Количество последних свечей, на основе которых рассчитывается Bollinger Bands
 	Window int
 	// Коэффициент Bollinger Bands (множитель стандартного отклонения).
@@ -16,23 +18,23 @@ type StrategyParams struct {
 }
 
 // bollinger вычисляет границы интервала Bollinger Bands
-func bollinger(candles []*investapi.HistoricCandle, coef float64) (float64, float64) {
+func bollinger(candles []*generated2.HistoricCandle, coef float64) (float64, float64) {
 	var sum float64
 	n := float64(len(candles))
 
 	// вычисляем арифметическое среднее "типичных" цен
 	sum = 0
 	for _, candle := range candles {
-		sum += (FloatFromQuotation(candle.High) +
-			FloatFromQuotation(candle.Low) +
-			FloatFromQuotation(candle.Close)) / 3
+		sum += (utils.FloatFromQuotation(candle.High) +
+			utils.FloatFromQuotation(candle.Low) +
+			utils.FloatFromQuotation(candle.Close)) / 3
 	}
 	mean := sum / n
 
 	// вычисляем стандартное отклонение
 	sum = 0
 	for _, candle := range candles {
-		sum += math.Pow(FloatFromQuotation(candle.Close)-mean, 2)
+		sum += math.Pow(utils.FloatFromQuotation(candle.Close)-mean, 2)
 	}
 	sd := math.Sqrt(sum / n)
 
@@ -58,7 +60,7 @@ func isBetweenIncl(samplePoint float64, bound1 float64, bound2 float64) bool {
 }
 
 // GetTradeSignal формирует рекомендацию в виде торгового сигнала (TradeSignal)
-func GetTradeSignal(strategyParams StrategyParams, testMode bool, currentCandle *investapi.Candle, newCandle bool, charts *Charts) *TradeSignal {
+func GetTradeSignal(strategyParams BollingerParams, testMode bool, currentCandle *generated2.Candle, newCandle bool, charts *metrics.Charts) *utils.TradeSignal {
 	lowerBound, upperBound := bollinger(
 		(*charts.Candles)[len(*charts.Candles)-strategyParams.Window:len(*charts.Candles)-1],
 		strategyParams.BollingerCoef,
@@ -73,35 +75,35 @@ func GetTradeSignal(strategyParams StrategyParams, testMode bool, currentCandle 
 	}
 
 	// Сигнал к покупке
-	if isAroundPoint(FloatFromQuotation(currentCandle.Close), lowerBound, strategyParams.IntervalPointDeviation) ||
+	if isAroundPoint(utils.FloatFromQuotation(currentCandle.Close), lowerBound, strategyParams.IntervalPointDeviation) ||
 		(testMode && // в тестовом режиме также проверяем топорным способом
 			(isBetweenIncl(
 				lowerBound,
-				FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
-				FloatFromQuotation(currentCandle.Close),
+				utils.FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
+				utils.FloatFromQuotation(currentCandle.Close),
 			) ||
 				isBetweenIncl(
 					lowerBound,
-					FloatFromQuotation(currentCandle.Open),
-					FloatFromQuotation(currentCandle.Close),
+					utils.FloatFromQuotation(currentCandle.Open),
+					utils.FloatFromQuotation(currentCandle.Close),
 				))) {
 
-		return &TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_BUY}
+		return &utils.TradeSignal{generated2.OrderDirection_ORDER_DIRECTION_BUY}
 		// Сигнал к продаже
-	} else if isAroundPoint(FloatFromQuotation(currentCandle.Close), upperBound, strategyParams.IntervalPointDeviation) ||
+	} else if isAroundPoint(utils.FloatFromQuotation(currentCandle.Close), upperBound, strategyParams.IntervalPointDeviation) ||
 		(testMode &&
 			(isBetweenIncl(
 				upperBound,
-				FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
-				FloatFromQuotation(currentCandle.Close),
+				utils.FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
+				utils.FloatFromQuotation(currentCandle.Close),
 			) ||
 				isBetweenIncl(
 					upperBound,
-					FloatFromQuotation(currentCandle.Open),
-					FloatFromQuotation(currentCandle.Close),
+					utils.FloatFromQuotation(currentCandle.Open),
+					utils.FloatFromQuotation(currentCandle.Close),
 				))) {
 
-		return &TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_SELL}
+		return &utils.TradeSignal{generated2.OrderDirection_ORDER_DIRECTION_SELL}
 	}
 
 	return nil

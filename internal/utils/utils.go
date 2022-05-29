@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"errors"
@@ -8,7 +8,8 @@ import (
 	"net/http"
 	"runtime"
 	"time"
-	investapi "tinkoff-invest-contest/investAPI"
+	"tinkoff-invest-contest/internal/appstate"
+	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
 )
 
 // MaybeCrash выводит подробности об ошибке и завершает программу с кодом 1
@@ -22,43 +23,22 @@ func MaybeCrash(err error) {
 
 // WaitForInternetConnection пингует clients3.google.com, блокируя тред до успешного соединения
 func WaitForInternetConnection() {
-	client := http.Client{Timeout: 5 * time.Second}
+	httpClient := http.Client{Timeout: 5 * time.Second}
 	err := errors.New("")
 	for err != nil {
-		_, err = client.Get("https://clients3.google.com/")
+		_, err = httpClient.Get("https://clients3.google.com/")
 		if err != nil {
-			if !NoInternetConnection {
+			if !appstate.NoInternetConnection {
 				log.Println("waiting for internet connection...")
 			}
-			NoInternetConnection = true
+			appstate.NoInternetConnection = true
 			time.Sleep(10 * time.Second)
 		}
 	}
-	if NoInternetConnection {
+	if appstate.NoInternetConnection {
 		log.Println("internet connection established")
 	}
-	NoInternetConnection = false
-}
-
-// GetCandlesForLastNDays загружает свечи за заданное кол-во последних дней
-func GetCandlesForLastNDays(client *Client, figi string, n int,
-	candleInterval investapi.CandleInterval) ([]*investapi.HistoricCandle, error) {
-	candles := make([]*investapi.HistoricCandle, 0)
-	for day := n; day >= 0; day-- {
-		portion, err := client.GetCandles(
-			figi,
-			time.Now().AddDate(0, 0, -day-1),
-			time.Now().AddDate(0, 0, -day),
-			candleInterval,
-		)
-		if err != nil {
-			return nil, err
-		}
-		for _, currentCandle := range portion {
-			candles = append(candles, currentCandle)
-		}
-	}
-	return candles, nil
+	appstate.NoInternetConnection = false
 }
 
 var CandleIntervalsV1NamesToValues = map[string]investapi.CandleInterval{

@@ -1,7 +1,6 @@
-/stocks.json
-/deploy.sh
-/.env
-/logs/
-/cache/
 /.idea/
-/tinkoff-invest-contest
+/*.sh
+/cmd/bot/.env
+/cmd/bot/logs
+/cmd/bot/cache/
+/cmd/bot/bot

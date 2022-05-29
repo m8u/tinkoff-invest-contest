@@ -1,4 +1,4 @@
-package main
+package metrics
 
 import (
 	"fmt"
@@ -8,7 +8,8 @@ import (
 	"log"
 	"net/http"
 	"time"
-	investapi "tinkoff-invest-contest/investAPI"
+	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/utils"
 )
 
 // Charts - стркуктура, хранящая данные для графиков ECharts
@@ -27,6 +28,17 @@ type ChartsTradeFlag struct {
 	Price       float64
 	Quantity    int64
 	CandleIndex int
+}
+
+func NewCharts() *Charts {
+	return &Charts{
+		Candles:        new([]*investapi.HistoricCandle),
+		Intervals:      new([][]float64),
+		Flags:          new([][]ChartsTradeFlag),
+		BalanceHistory: new([]float64),
+		StartBalance:   new(float64),
+		TestMode:       new(bool),
+	}
 }
 
 // HandleTradingChart отвечает за обработку запросов к основному торговому графику.
@@ -60,10 +72,10 @@ func (c *Charts) HandleTradingChart(w http.ResponseWriter, _ *http.Request) {
 	for i, candle := range *c.Candles {
 		klineX = append(klineX, candle.Time.AsTime())
 		klineY = append(klineY, opts.KlineData{Value: []float64{
-			FloatFromQuotation(candle.Open),
-			FloatFromQuotation(candle.Close),
-			FloatFromQuotation(candle.Low),
-			FloatFromQuotation(candle.High),
+			utils.FloatFromQuotation(candle.Open),
+			utils.FloatFromQuotation(candle.Close),
+			utils.FloatFromQuotation(candle.Low),
+			utils.FloatFromQuotation(candle.High),
 		}})
 
 		if flagContainerIndex < len(*c.Flags) && i == (*c.Flags)[flagContainerIndex][0].CandleIndex {

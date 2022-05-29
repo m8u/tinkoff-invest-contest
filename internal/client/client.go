@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"context"
@@ -9,10 +9,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
 	"time"
-	investapi "tinkoff-invest-contest/investAPI"
+	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/utils"
 )
 
 const ServiceAddress string = "invest-public-api.tinkoff.ru:443"
+const AppName = "m8u"
 
 type Client struct {
 	token            string
@@ -32,7 +34,7 @@ type Client struct {
 
 // NewClient создает новый клиент gRPC-интерфейса Tinkoff Invest API
 func NewClient(token string) *Client {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	var err error
 	clientConn, err := grpc.Dial(ServiceAddress, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	if err != nil {
@@ -74,7 +76,7 @@ func newContextWithBearerToken(token string) context.Context {
 }
 
 func (c *Client) CloseSandboxAccount(accountId string) (*investapi.CloseSandboxAccountResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	closeSandboxAccountResp, err := c.SandboxService.CloseSandboxAccount(
 		newContextWithBearerToken(c.token),
 		&investapi.CloseSandboxAccountRequest{
@@ -88,7 +90,7 @@ func (c *Client) CloseSandboxAccount(accountId string) (*investapi.CloseSandboxA
 }
 
 func (c *Client) GetAccounts() ([]*investapi.Account, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	accountsResp, err := c.UsersService.GetAccounts(
 		newContextWithBearerToken(c.token),
 		&investapi.GetAccountsRequest{},
@@ -100,7 +102,7 @@ func (c *Client) GetAccounts() ([]*investapi.Account, error) {
 }
 
 func (c *Client) GetCandles(figi string, from time.Time, to time.Time, interval investapi.CandleInterval) ([]*investapi.HistoricCandle, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	candlesResp, err := c.MarketDataService.GetCandles(
 		newContextWithBearerToken(c.token),
 		&investapi.GetCandlesRequest{
@@ -117,7 +119,7 @@ func (c *Client) GetCandles(figi string, from time.Time, to time.Time, interval 
 }
 
 func (c *Client) GetInfo() (*investapi.GetInfoResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	infoResp, err := c.UsersService.GetInfo(
 		newContextWithBearerToken(c.token),
 		&investapi.GetInfoRequest{},
@@ -129,7 +131,7 @@ func (c *Client) GetInfo() (*investapi.GetInfoResponse, error) {
 }
 
 func (c *Client) GetMarginAttributes(accountId string) (*investapi.GetMarginAttributesResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	marginAttributesResp, err := c.UsersService.GetMarginAttributes(
 		newContextWithBearerToken(c.token),
 		&investapi.GetMarginAttributesRequest{
@@ -143,7 +145,7 @@ func (c *Client) GetMarginAttributes(accountId string) (*investapi.GetMarginAttr
 }
 
 func (c *Client) GetOrderState(accountId string, orderId string) (*investapi.OrderState, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	orderState, err := c.OrdersService.GetOrderState(
 		newContextWithBearerToken(c.token),
 		&investapi.GetOrderStateRequest{
@@ -158,7 +160,7 @@ func (c *Client) GetOrderState(accountId string, orderId string) (*investapi.Ord
 }
 
 func (c *Client) GetPositions(accountId string) (*investapi.PositionsResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	positionsResp, err := c.OperationsService.GetPositions(
 		newContextWithBearerToken(c.token),
 		&investapi.PositionsRequest{
@@ -172,7 +174,7 @@ func (c *Client) GetPositions(accountId string) (*investapi.PositionsResponse, e
 }
 
 func (c *Client) GetSandboxAccounts() ([]*investapi.Account, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	sandboxAccountsResp, err := c.SandboxService.GetSandboxAccounts(
 		newContextWithBearerToken(c.token),
 		&investapi.GetAccountsRequest{},
@@ -184,7 +186,7 @@ func (c *Client) GetSandboxAccounts() ([]*investapi.Account, error) {
 }
 
 func (c *Client) GetSandboxOrderState(accountId string, orderId string) (*investapi.OrderState, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	orderState, err := c.SandboxService.GetSandboxOrderState(
 		newContextWithBearerToken(c.token),
 		&investapi.GetOrderStateRequest{
@@ -199,7 +201,7 @@ func (c *Client) GetSandboxOrderState(accountId string, orderId string) (*invest
 }
 
 func (c *Client) GetSandboxPositions(accountId string) (*investapi.PositionsResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	positionsResp, err := c.SandboxService.GetSandboxPositions(
 		newContextWithBearerToken(c.token),
 		&investapi.PositionsRequest{
@@ -213,7 +215,7 @@ func (c *Client) GetSandboxPositions(accountId string) (*investapi.PositionsResp
 }
 
 func (c *Client) OpenSandboxAccount() (*investapi.OpenSandboxAccountResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	openSandboxAccountResp, err := c.SandboxService.OpenSandboxAccount(
 		newContextWithBearerToken(c.token),
 		&investapi.OpenSandboxAccountRequest{},
@@ -226,13 +228,13 @@ func (c *Client) OpenSandboxAccount() (*investapi.OpenSandboxAccountResponse, er
 
 func (c *Client) PostOrder(figi string, quantity int64, price float64, direction investapi.OrderDirection,
 	accountId string, orderType investapi.OrderType, orderId string) (*investapi.PostOrderResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	postOrderResp, err := c.OrdersService.PostOrder(
 		newContextWithBearerToken(c.token),
 		&investapi.PostOrderRequest{
 			Figi:      figi,
 			Quantity:  quantity,
-			Price:     QuotationFromFloat(price),
+			Price:     utils.QuotationFromFloat(price),
 			Direction: direction,
 			AccountId: accountId,
 			OrderType: orderType,
@@ -247,13 +249,13 @@ func (c *Client) PostOrder(figi string, quantity int64, price float64, direction
 
 func (c *Client) PostSandboxOrder(figi string, quantity int64, price float64, direction investapi.OrderDirection,
 	accountId string, orderType investapi.OrderType, orderId string) (*investapi.PostOrderResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	postOrderResp, err := c.SandboxService.PostSandboxOrder(
 		newContextWithBearerToken(c.token),
 		&investapi.PostOrderRequest{
 			Figi:      figi,
 			Quantity:  quantity,
-			Price:     QuotationFromFloat(price),
+			Price:     utils.QuotationFromFloat(price),
 			Direction: direction,
 			AccountId: accountId,
 			OrderType: orderType,
@@ -267,7 +269,7 @@ func (c *Client) PostSandboxOrder(figi string, quantity int64, price float64, di
 }
 
 func (c *Client) RunMarketDataStreamLoop(handler func(marketDataResp *investapi.MarketDataResponse)) error {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	for {
 		marketDataResp, err := c.marketDataStream.Recv()
 		if err != nil {
@@ -278,12 +280,12 @@ func (c *Client) RunMarketDataStreamLoop(handler func(marketDataResp *investapi.
 }
 
 func (c *Client) SandboxPayIn(accountId string, currency string, amount float64) (*investapi.SandboxPayInResponse, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	sandboxPayInResp, err := c.SandboxService.SandboxPayIn(
 		newContextWithBearerToken(c.token),
 		&investapi.SandboxPayInRequest{
 			AccountId: accountId,
-			Amount:    MoneyValueFromFloat(currency, amount),
+			Amount:    utils.MoneyValueFromFloat(currency, amount),
 		},
 	)
 	if err != nil {
@@ -293,7 +295,7 @@ func (c *Client) SandboxPayIn(accountId string, currency string, amount float64)
 }
 
 func (c *Client) ShareBy(idType investapi.InstrumentIdType, classCode string, id string) (*investapi.Share, error) {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	shareResp, err := c.InstrumentsService.ShareBy(
 		newContextWithBearerToken(c.token),
 		&investapi.InstrumentRequest{
@@ -309,7 +311,7 @@ func (c *Client) ShareBy(idType investapi.InstrumentIdType, classCode string, id
 }
 
 func (c *Client) SubscribeCandles(figi string, interval investapi.SubscriptionInterval) error {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	instruments := []*investapi.CandleInstrument{
 		{
 			Figi:     figi,
@@ -326,7 +328,7 @@ func (c *Client) SubscribeCandles(figi string, interval investapi.SubscriptionIn
 }
 
 func (c *Client) SubscribeInfo(figi string) error {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	instruments := []*investapi.InfoInstrument{
 		{Figi: figi},
 	}
@@ -340,7 +342,7 @@ func (c *Client) SubscribeInfo(figi string) error {
 }
 
 func (c *Client) UnsubscribeCandles(figi string, interval investapi.SubscriptionInterval) error {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	instruments := []*investapi.CandleInstrument{
 		{
 			Figi:     figi,
@@ -357,7 +359,7 @@ func (c *Client) UnsubscribeCandles(figi string, interval investapi.Subscription
 }
 
 func (c *Client) UnsubscribeInfo(figi string) error {
-	WaitForInternetConnection()
+	utils.WaitForInternetConnection()
 	instruments := []*investapi.InfoInstrument{
 		{Figi: figi},
 	}

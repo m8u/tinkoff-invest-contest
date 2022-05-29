@@ -11,13 +11,13 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	investapi "tinkoff-invest-contest/investAPI"
+	"tinkoff-invest-contest/internal/appstate"
+	"tinkoff-invest-contest/internal/backtest"
+	"tinkoff-invest-contest/internal/metrics"
+	"tinkoff-invest-contest/internal/strategy"
+	"tinkoff-invest-contest/internal/trade"
+	"tinkoff-invest-contest/internal/utils"
 )
-
-const AppName = "m8u"
-
-var ShouldExit = false
-var NoInternetConnection = false
 
 func main() {
 	var mode = flag.String("mode", "",
@@ -35,7 +35,7 @@ func main() {
 	var startMoney = flag.Float64("start_money", 100000,
 		"(for --mode=test|sandbox) Starting money amount",
 	)
-	var fee = flag.Float64("fee", Fees[Premium],
+	var fee = flag.Float64("fee", utils.Fees[utils.Premium],
 		"(for --mode=test) Transaction fee (normalized, e.g. 0.00025 for 0.025%)",
 	)
 	var candleInterval = flag.String("candle_interval", "1min",
@@ -59,7 +59,7 @@ func main() {
 	)
 	flag.Parse()
 
-	if _, ok := CandleIntervalsToDurations[CandleIntervalsV1NamesToValues[*candleInterval]]; !ok {
+	if _, ok := utils.CandleIntervalsToDurations[utils.CandleIntervalsV1NamesToValues[*candleInterval]]; !ok {
 		log.Fatalln("please choose one of supported candle intervals\n" +
 			"Try '--help' for more info")
 	}
@@ -71,7 +71,7 @@ func main() {
 	_, err := os.ReadDir("logs")
 	if err != nil {
 		err = os.Mkdir("logs", 0775)
-		MaybeCrash(err)
+		utils.MaybeCrash(err)
 	}
 	logFile, err := os.OpenFile("logs/"+time.Now().Format(time.RFC3339)+".log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -81,14 +81,7 @@ func main() {
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(multiWriter)
 
-	charts := Charts{
-		Candles:        new([]*investapi.HistoricCandle),
-		Intervals:      new([][]float64),
-		Flags:          new([][]ChartsTradeFlag),
-		BalanceHistory: new([]float64),
-		StartBalance:   new(float64),
-		TestMode:       new(bool),
-	}
+	charts := metrics.NewCharts()
 
 	_ = godotenv.Load(".env")
 
@@ -99,16 +92,16 @@ func main() {
 			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
 		}
 
-		WaitForInternetConnection()
+		utils.WaitForInternetConnection()
 
 		*charts.TestMode = true
 		log.Println("Testing on historical data...")
-		go TestOnHistoricalData(
+		go backtest.TestOnHistoricalData(
 			token,
 			*figi,
 			*testDays,
-			CandleIntervalsV1NamesToValues[*candleInterval],
-			StrategyParams{
+			utils.CandleIntervalsV1NamesToValues[*candleInterval],
+			strategy.BollingerParams{
 				Window:                 *window,
 				BollingerCoef:          *bollingerCoef,
 				IntervalPointDeviation: *maxPointDeviation,
@@ -116,7 +109,7 @@ func main() {
 			*startMoney,
 			*fee,
 			*allowMargin,
-			&charts,
+			charts,
 		)
 		break
 	case "sandbox":
@@ -128,17 +121,17 @@ func main() {
 			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
 		}
 
-		WaitForInternetConnection()
+		utils.WaitForInternetConnection()
 
 		*charts.TestMode = false
 		log.Println("Starting a sandbox bot...")
-		bot := NewSandboxBot(
+		bot := trade.NewSandboxBot(
 			token,
 			*startMoney,
 			*figi,
-			CandleIntervalsV1NamesToValues[*candleInterval],
+			utils.CandleIntervalsV1NamesToValues[*candleInterval],
 			*fee,
-			StrategyParams{
+			strategy.BollingerParams{
 				Window:                 *window,
 				BollingerCoef:          *bollingerCoef,
 				IntervalPointDeviation: *maxPointDeviation,
@@ -146,7 +139,7 @@ func main() {
 			*allowMargin,
 		)
 
-		go bot.Serve(&charts)
+		go bot.Serve(charts)
 
 		break
 	case "combat":
@@ -155,15 +148,15 @@ func main() {
 			log.Fatalln("please provide combat token via 'COMBAT_TOKEN' environment variable")
 		}
 
-		WaitForInternetConnection()
+		utils.WaitForInternetConnection()
 
 		*charts.TestMode = false
 		log.Println("Starting a combat bot...")
-		bot := NewCombatBot(
+		bot := trade.NewCombatBot(
 			token,
 			*figi,
-			CandleIntervalsV1NamesToValues[*candleInterval],
-			StrategyParams{
+			utils.CandleIntervalsV1NamesToValues[*candleInterval],
+			strategy.BollingerParams{
 				Window:                 *window,
 				BollingerCoef:          *bollingerCoef,
 				IntervalPointDeviation: *maxPointDeviation,
@@ -171,7 +164,7 @@ func main() {
 			*allowMargin,
 		)
 
-		go bot.Serve(&charts)
+		go bot.Serve(charts)
 
 		break
 	default:
@@ -189,7 +182,7 @@ func main() {
 			<-ch
 			signal.Stop(ch)
 			log.Println("Exiting...")
-			ShouldExit = true
+			appstate.ShouldExit = true
 			time.Sleep(5 * time.Second)
 			os.Exit(0)
 		}()
