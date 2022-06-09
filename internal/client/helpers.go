@@ -2,7 +2,7 @@ package client
 
 import (
 	"time"
-	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/client/investapi"
 )
 
 // GetCandlesForLastNDays загружает свечи за заданное кол-во последних дней

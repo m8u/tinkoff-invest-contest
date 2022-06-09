@@ -6,7 +6,7 @@ import (
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client"
-	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/strategy"
 	"tinkoff-invest-contest/internal/utils"
@@ -411,10 +411,10 @@ func (bot *Bot) Serve(charts *metrics.Charts) {
 					}
 					(*charts.Flags)[len(*charts.Flags)-1] = append((*charts.Flags)[len(*charts.Flags)-1],
 						metrics.ChartsTradeFlag{
-							tradeSignal.Direction,
-							utils.FloatFromQuotation(bot.marketInfo.currentCandle.Close),
-							lots * int64(share.Lot),
-							len(*charts.Candles) - 1,
+							Direction:   tradeSignal.Direction,
+							Price:       utils.FloatFromQuotation(bot.marketInfo.currentCandle.Close),
+							Quantity:    lots * int64(share.Lot),
+							CandleIndex: len(*charts.Candles) - 1,
 						},
 					)
 				}

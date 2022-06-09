@@ -2,7 +2,7 @@ package strategy
 
 import (
 	"math"
-	generated2 "tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -18,7 +18,7 @@ type BollingerParams struct {
 }
 
 // bollinger вычисляет границы интервала Bollinger Bands
-func bollinger(candles []*generated2.HistoricCandle, coef float64) (float64, float64) {
+func bollinger(candles []*investapi.HistoricCandle, coef float64) (float64, float64) {
 	var sum float64
 	n := float64(len(candles))
 
@@ -60,7 +60,7 @@ func isBetweenIncl(samplePoint float64, bound1 float64, bound2 float64) bool {
 }
 
 // GetTradeSignal формирует рекомендацию в виде торгового сигнала (TradeSignal)
-func GetTradeSignal(strategyParams BollingerParams, testMode bool, currentCandle *generated2.Candle, newCandle bool, charts *metrics.Charts) *utils.TradeSignal {
+func GetTradeSignal(strategyParams BollingerParams, testMode bool, currentCandle *investapi.Candle, newCandle bool, charts *metrics.Charts) *utils.TradeSignal {
 	lowerBound, upperBound := bollinger(
 		(*charts.Candles)[len(*charts.Candles)-strategyParams.Window:len(*charts.Candles)-1],
 		strategyParams.BollingerCoef,
@@ -88,7 +88,7 @@ func GetTradeSignal(strategyParams BollingerParams, testMode bool, currentCandle
 					utils.FloatFromQuotation(currentCandle.Close),
 				))) {
 
-		return &utils.TradeSignal{generated2.OrderDirection_ORDER_DIRECTION_BUY}
+		return &utils.TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_BUY}
 		// Сигнал к продаже
 	} else if isAroundPoint(utils.FloatFromQuotation(currentCandle.Close), upperBound, strategyParams.IntervalPointDeviation) ||
 		(testMode &&
@@ -103,7 +103,7 @@ func GetTradeSignal(strategyParams BollingerParams, testMode bool, currentCandle
 					utils.FloatFromQuotation(currentCandle.Close),
 				))) {
 
-		return &utils.TradeSignal{generated2.OrderDirection_ORDER_DIRECTION_SELL}
+		return &utils.TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}
 
 	return nil

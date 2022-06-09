@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
-	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/client/investapi"
 )
 
 // MaybeCrash выводит подробности об ошибке и завершает программу с кодом 1

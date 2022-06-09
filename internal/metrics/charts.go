@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
 )
 

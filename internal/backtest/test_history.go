@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 	"tinkoff-invest-contest/internal/client"
-	"tinkoff-invest-contest/internal/grpc/tinkoff/investapi"
+	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/strategy"
 	"tinkoff-invest-contest/internal/utils"
