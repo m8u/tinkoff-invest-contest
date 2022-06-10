@@ -60,49 +60,22 @@ func isBetweenIncl(samplePoint float64, bound1 float64, bound2 float64) bool {
 }
 
 // GetTradeSignal формирует рекомендацию в виде торгового сигнала (TradeSignal)
-func GetTradeSignal(strategyParams BollingerParams, testMode bool, currentCandle *investapi.Candle, newCandle bool, charts *metrics.Charts) *utils.TradeSignal {
+func GetTradeSignal(strategyParams BollingerParams, currentCandle *investapi.Candle, newCandle bool, charts *metrics.Charts) *utils.TradeSignal {
 	lowerBound, upperBound := bollinger(
 		(*charts.Candles)[len(*charts.Candles)-strategyParams.Window:len(*charts.Candles)-1],
 		strategyParams.BollingerCoef,
 	)
-	// Добавляем интервал в статистику для отображения на графике
-	// В режиме теста, если впервые, добавляем его дважды чтобы не словить index error при проверке пересечения
-	if testMode && len(*charts.Intervals) == 0 {
-		*charts.Intervals = append(*charts.Intervals, []float64{lowerBound, upperBound})
-	}
+
 	if newCandle {
 		*charts.Intervals = append(*charts.Intervals, []float64{lowerBound, upperBound})
 	}
 
-	// Сигнал к покупке
-	if isAroundPoint(utils.FloatFromQuotation(currentCandle.Close), lowerBound, strategyParams.IntervalPointDeviation) ||
-		(testMode && // в тестовом режиме также проверяем топорным способом
-			(isBetweenIncl(
-				lowerBound,
-				utils.FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
-				utils.FloatFromQuotation(currentCandle.Close),
-			) ||
-				isBetweenIncl(
-					lowerBound,
-					utils.FloatFromQuotation(currentCandle.Open),
-					utils.FloatFromQuotation(currentCandle.Close),
-				))) {
-
+	if isAroundPoint(utils.FloatFromQuotation(currentCandle.Close), lowerBound, strategyParams.IntervalPointDeviation) {
+		// Сигнал к покупке
 		return &utils.TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_BUY}
-		// Сигнал к продаже
-	} else if isAroundPoint(utils.FloatFromQuotation(currentCandle.Close), upperBound, strategyParams.IntervalPointDeviation) ||
-		(testMode &&
-			(isBetweenIncl(
-				upperBound,
-				utils.FloatFromQuotation((*charts.Candles)[len(*charts.Candles)-2].Close),
-				utils.FloatFromQuotation(currentCandle.Close),
-			) ||
-				isBetweenIncl(
-					upperBound,
-					utils.FloatFromQuotation(currentCandle.Open),
-					utils.FloatFromQuotation(currentCandle.Close),
-				))) {
 
+	} else if isAroundPoint(utils.FloatFromQuotation(currentCandle.Close), upperBound, strategyParams.IntervalPointDeviation) {
+		// Сигнал к продаже
 		return &utils.TradeSignal{investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}
 

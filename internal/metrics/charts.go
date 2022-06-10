@@ -19,7 +19,6 @@ type Charts struct {
 	Flags          *[][]ChartsTradeFlag
 	BalanceHistory *[]float64
 	StartBalance   *float64
-	TestMode       *bool
 }
 
 // ChartsTradeFlag - структура, описывающая отметку о совершенной сделке на графике
@@ -37,7 +36,6 @@ func NewCharts() *Charts {
 		Flags:          new([][]ChartsTradeFlag),
 		BalanceHistory: new([]float64),
 		StartBalance:   new(float64),
-		TestMode:       new(bool),
 	}
 }
 
@@ -137,8 +135,7 @@ func (c *Charts) HandleTradingChart(w http.ResponseWriter, _ *http.Request) {
 				SymbolSize: 0,
 			})
 		}
-		if i-(len(*c.Candles)-len(*c.Intervals)) >= 0 ||
-			(*c.TestMode && i-(len(*c.Candles)-len(*c.Intervals)) >= 1) {
+		if i-(len(*c.Candles)-len(*c.Intervals)) >= 0 {
 			lineYLower = append(lineYLower, opts.LineData{
 				Value: (*c.Intervals)[i-(len(*c.Candles)-len(*c.Intervals))][0],
 			})
@@ -236,12 +233,11 @@ func (c *Charts) HandleTradingChart(w http.ResponseWriter, _ *http.Request) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if !*c.TestMode {
-		// будем перезагружать страницу каждые 30 секунд
-		_, err = w.Write([]byte("<meta http-equiv=\"refresh\" content=\"30\" />"))
-		if err != nil {
-			log.Fatalln(err)
-		}
+
+	// будем перезагружать страницу каждые 30 секунд
+	_, err = w.Write([]byte("<meta http-equiv=\"refresh\" content=\"30\" />"))
+	if err != nil {
+		log.Fatalln(err)
 	}
 }
 

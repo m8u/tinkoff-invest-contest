@@ -1,6 +1,6 @@
 /.idea/
 /*.sh
-/cmd/bot/.env
-/cmd/bot/logs
-/cmd/bot/cache/
-/cmd/bot/bot
+/cmd/trade/.env
+/cmd/trade/logs
+/cmd/trade/cache/
+/cmd/trade/bot

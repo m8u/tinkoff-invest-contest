@@ -580,7 +580,7 @@ type MarketDataResponse_Candle struct {
 }
 
 type MarketDataResponse_Trade struct {
-	Trade *Trade `protobuf:"bytes,6,opt,name=trade,proto3,oneof"` //Сделки.
+	Trade *Trade `protobuf:"bytes,6,opt,name=bollinger_bot,proto3,oneof"` //Сделки.
 }
 
 type MarketDataResponse_Orderbook struct {
@@ -3708,7 +3708,7 @@ var file_marketdata_proto_depIdxs = []int32{
 	17, // 7: tinkoff.public.invest.api.contract.v1.MarketDataResponse.subscribe_trades_response:type_name -> tinkoff.public.invest.api.contract.v1.SubscribeTradesResponse
 	21, // 8: tinkoff.public.invest.api.contract.v1.MarketDataResponse.subscribe_info_response:type_name -> tinkoff.public.invest.api.contract.v1.SubscribeInfoResponse
 	27, // 9: tinkoff.public.invest.api.contract.v1.MarketDataResponse.candle:type_name -> tinkoff.public.invest.api.contract.v1.Candle
-	30, // 10: tinkoff.public.invest.api.contract.v1.MarketDataResponse.trade:type_name -> tinkoff.public.invest.api.contract.v1.Trade
+	30, // 10: tinkoff.public.invest.api.contract.v1.MarketDataResponse.bollinger_bot:type_name -> tinkoff.public.invest.api.contract.v1.Trade
 	28, // 11: tinkoff.public.invest.api.contract.v1.MarketDataResponse.orderbook:type_name -> tinkoff.public.invest.api.contract.v1.OrderBook
 	31, // 12: tinkoff.public.invest.api.contract.v1.MarketDataResponse.trading_status:type_name -> tinkoff.public.invest.api.contract.v1.TradingStatus
 	44, // 13: tinkoff.public.invest.api.contract.v1.MarketDataResponse.ping:type_name -> tinkoff.public.invest.api.contract.v1.Ping

@@ -1,4 +1,4 @@
-package trade
+package bollinger_bot
 
 import (
 	"github.com/google/uuid"
@@ -254,7 +254,6 @@ func (bot *Bot) Serve(charts *metrics.Charts) {
 
 				tradeSignal := strategy.GetTradeSignal(
 					bot.strategyParams,
-					false,
 					bot.marketInfo.currentCandle,
 					newCandle,
 					charts,

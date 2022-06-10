@@ -12,31 +12,26 @@ import (
 	"syscall"
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
-	"tinkoff-invest-contest/internal/backtest"
+	"tinkoff-invest-contest/internal/bots/bollinger_bot"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/strategy"
-	"tinkoff-invest-contest/internal/trade"
 	"tinkoff-invest-contest/internal/utils"
 )
 
 func main() {
 	var mode = flag.String("mode", "",
 		"Modes are:\n"+
-			"'test'    - Run a test on historical data\n"+
 			"'sandbox' - Start a sandbox bot\n"+
 			"'combat'  - Start a combat bot",
 	)
 	var figi = flag.String("figi", "BBG006L8G4H1",
-		"FIGI of a stock to trade",
-	)
-	var testDays = flag.Int("test_days", 100,
-		"(for --mode=test) Number of days to test on",
+		"FIGI of a stock to bollinger_bot",
 	)
 	var startMoney = flag.Float64("start_money", 100000,
-		"(for --mode=test|sandbox) Starting money amount",
+		"(for --mode=sandbox) Starting money amount",
 	)
 	var fee = flag.Float64("fee", utils.Fees[utils.Premium],
-		"(for --mode=test) Transaction fee (normalized, e.g. 0.00025 for 0.025%)",
+		"(for --mode=sandbox) Transaction fee (normalized, e.g. 0.00025 for 0.025%)",
 	)
 	var candleInterval = flag.String("candle_interval", "1min",
 		"Candle interval. Possible values are:\n"+
@@ -55,7 +50,7 @@ func main() {
 		"Maximum relative deviation when detecting price-bound intersections (normalized, e.g. 0.001 for 0.1%)",
 	)
 	var allowMargin = flag.Bool("allow_margin", false,
-		"Either allow margin trading or not (1 or 0) (default: 0)",
+		"(for --mode=combat) Either allow margin trading or not (1 or 0) (default: 0)",
 	)
 	flag.Parse()
 
@@ -86,35 +81,9 @@ func main() {
 	_ = godotenv.Load(".env")
 
 	switch *mode {
-	case "test":
-		token := os.Getenv("SANDBOX_TOKEN")
-		if token == "" {
-			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
-		}
-
-		utils.WaitForInternetConnection()
-
-		*charts.TestMode = true
-		log.Println("Testing on historical data...")
-		go backtest.TestOnHistoricalData(
-			token,
-			*figi,
-			*testDays,
-			utils.CandleIntervalsV1NamesToValues[*candleInterval],
-			strategy.BollingerParams{
-				Window:                 *window,
-				BollingerCoef:          *bollingerCoef,
-				IntervalPointDeviation: *maxPointDeviation,
-			},
-			*startMoney,
-			*fee,
-			*allowMargin,
-			charts,
-		)
-		break
 	case "sandbox":
 		if *allowMargin {
-			log.Fatalln("can't margin trade in sandbox")
+			log.Fatalln("can't margin-trade in sandbox")
 		}
 		token := os.Getenv("SANDBOX_TOKEN")
 		if token == "" {
@@ -123,9 +92,8 @@ func main() {
 
 		utils.WaitForInternetConnection()
 
-		*charts.TestMode = false
 		log.Println("Starting a sandbox bot...")
-		bot := trade.NewSandboxBot(
+		bot := bollinger_bot.NewSandboxBot(
 			token,
 			*startMoney,
 			*figi,
@@ -150,9 +118,8 @@ func main() {
 
 		utils.WaitForInternetConnection()
 
-		*charts.TestMode = false
 		log.Println("Starting a combat bot...")
-		bot := trade.NewCombatBot(
+		bot := bollinger_bot.NewCombatBot(
 			token,
 			*figi,
 			utils.CandleIntervalsV1NamesToValues[*candleInterval],
@@ -173,20 +140,18 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *mode != "test" {
-		// запустим goroutine-у чтобы ждала один из сигналов прекращения работы
-		// и устанавливала флаг ShouldExit
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
-		go func() {
-			<-ch
-			signal.Stop(ch)
-			log.Println("Exiting...")
-			appstate.ShouldExit = true
-			time.Sleep(5 * time.Second)
-			os.Exit(0)
-		}()
-	}
+	// запустим goroutine-у чтобы ждала один из сигналов прекращения работы
+	// и устанавливала флаг ShouldExit
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	go func() {
+		<-ch
+		signal.Stop(ch)
+		log.Println("Exiting...")
+		appstate.ShouldExit = true
+		time.Sleep(5 * time.Second)
+		os.Exit(0)
+	}()
 
 	// запускаем сервер с графиками
 	http.HandleFunc("/", charts.HandleTradingChart)
