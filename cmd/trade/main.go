@@ -12,9 +12,10 @@ import (
 	"syscall"
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
-	"tinkoff-invest-contest/internal/bots/bollinger_bot"
+	"tinkoff-invest-contest/internal/bots/bollinger"
+	"tinkoff-invest-contest/internal/config"
 	"tinkoff-invest-contest/internal/metrics"
-	"tinkoff-invest-contest/internal/strategy"
+	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
 
@@ -40,15 +41,15 @@ func main() {
 			"'15min'\n"+
 			"'hour'\n",
 	)
-	var window = flag.Int("window", 60,
-		"Bollinger Bands MA window size",
-	)
-	var bollingerCoef = flag.Float64("bollinger_coef", 3,
-		"Bollinger Bands coefficient (number of standard deviations)",
-	)
-	var maxPointDeviation = flag.Float64("max_point_dev", 0.001,
-		"Maximum relative deviation when detecting price-bound intersections (normalized, e.g. 0.001 for 0.1%)",
-	)
+	//var window = flag.Int("window", 60,
+	//	"Bollinger Bands MA window size",
+	//)
+	//var bollingerCoef = flag.Float64("bollinger_coef", 3,
+	//	"Bollinger Bands coefficient (number of standard deviations)",
+	//)
+	//var maxPointDeviation = flag.Float64("max_point_dev", 0.001,
+	//	"Maximum relative deviation when detecting price-bound intersections (normalized, e.g. 0.001 for 0.1%)",
+	//)
 	var allowMargin = flag.Bool("allow_margin", false,
 		"(for --mode=combat) Either allow margin trading or not (1 or 0) (default: 0)",
 	)
@@ -80,6 +81,21 @@ func main() {
 
 	_ = godotenv.Load(".env")
 
+	tradeEnvConfig := config.Config{
+		IsSandbox:   true,
+		Token:       os.Getenv("SANDBOX_TOKEN"),
+		NumAccounts: 1,
+		Money:       *startMoney,
+		Fee:         *fee,
+		Instruments: []config.ConfigInstrument{
+			{
+				FIGI:           *figi,
+				CandleInterval: utils.CandleIntervalsV1NamesToValues[*candleInterval],
+				OrderBookDepth: 10,
+			},
+		},
+	}
+
 	switch *mode {
 	case "sandbox":
 		if *allowMargin {
@@ -93,21 +109,10 @@ func main() {
 		utils.WaitForInternetConnection()
 
 		log.Println("Starting a sandbox bot...")
-		bot := bollinger_bot.NewSandboxBot(
-			token,
-			*startMoney,
-			*figi,
-			utils.CandleIntervalsV1NamesToValues[*candleInterval],
-			*fee,
-			strategy.BollingerParams{
-				Window:                 *window,
-				BollingerCoef:          *bollingerCoef,
-				IntervalPointDeviation: *maxPointDeviation,
-			},
-			*allowMargin,
-		)
+		tradeEnv := tradeenv.New(tradeEnvConfig)
+		bot := bollinger.New(tradeEnv, charts)
 
-		go bot.Serve(charts)
+		go bot.Serve()
 
 		break
 	case "combat":
@@ -119,19 +124,10 @@ func main() {
 		utils.WaitForInternetConnection()
 
 		log.Println("Starting a combat bot...")
-		bot := bollinger_bot.NewCombatBot(
-			token,
-			*figi,
-			utils.CandleIntervalsV1NamesToValues[*candleInterval],
-			strategy.BollingerParams{
-				Window:                 *window,
-				BollingerCoef:          *bollingerCoef,
-				IntervalPointDeviation: *maxPointDeviation,
-			},
-			*allowMargin,
-		)
+		tradeEnv := tradeenv.New(tradeEnvConfig)
+		bot := bollinger.New(tradeEnv, charts)
 
-		go bot.Serve(charts)
+		go bot.Serve()
 
 		break
 	default:

@@ -341,6 +341,23 @@ func (c *Client) SubscribeInfo(figi string) error {
 	return err
 }
 
+func (c *Client) SubscribeOrderBook(figi string, depth int32) error {
+	utils.WaitForInternetConnection()
+	instruments := []*investapi.OrderBookInstrument{
+		{
+			Figi:  figi,
+			Depth: depth,
+		},
+	}
+	err := c.marketDataStream.Send(&investapi.MarketDataRequest{Payload: &investapi.MarketDataRequest_SubscribeOrderBookRequest{
+		SubscribeOrderBookRequest: &investapi.SubscribeOrderBookRequest{
+			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_SUBSCRIBE,
+			Instruments:        instruments,
+		},
+	}})
+	return err
+}
+
 func (c *Client) UnsubscribeCandles(figi string, interval investapi.SubscriptionInterval) error {
 	utils.WaitForInternetConnection()
 	instruments := []*investapi.CandleInstrument{
@@ -365,6 +382,23 @@ func (c *Client) UnsubscribeInfo(figi string) error {
 	}
 	err := c.marketDataStream.Send(&investapi.MarketDataRequest{Payload: &investapi.MarketDataRequest_SubscribeInfoRequest{
 		SubscribeInfoRequest: &investapi.SubscribeInfoRequest{
+			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_UNSUBSCRIBE,
+			Instruments:        instruments,
+		},
+	}})
+	return err
+}
+
+func (c *Client) UnsubscribeOrderBook(figi string, depth int32) error {
+	utils.WaitForInternetConnection()
+	instruments := []*investapi.OrderBookInstrument{
+		{
+			Figi:  figi,
+			Depth: depth,
+		},
+	}
+	err := c.marketDataStream.Send(&investapi.MarketDataRequest{Payload: &investapi.MarketDataRequest_SubscribeOrderBookRequest{
+		SubscribeOrderBookRequest: &investapi.SubscribeOrderBookRequest{
 			SubscriptionAction: investapi.SubscriptionAction_SUBSCRIPTION_ACTION_UNSUBSCRIBE,
 			Instruments:        instruments,
 		},
