@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
-	"tinkoff-invest-contest/internal/bots/bollinger"
+	"tinkoff-invest-contest/internal/bots"
 	"tinkoff-invest-contest/internal/config"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/tradeenv"
@@ -110,7 +110,7 @@ func main() {
 
 		log.Println("Starting a sandbox bot...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bollinger.New(tradeEnv, charts)
+		bot := bots.New(tradeEnv, charts)
 
 		go bot.Serve()
 
@@ -125,7 +125,7 @@ func main() {
 
 		log.Println("Starting a combat bot...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bollinger.New(tradeEnv, charts)
+		bot := bots.New(tradeEnv, charts)
 
 		go bot.Serve()
 
