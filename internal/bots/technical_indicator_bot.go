@@ -16,8 +16,12 @@ type TechnicalIndicatorBot struct {
 	charts   *metrics.Charts
 }
 
-func New(tradeEnv *tradeenv.TradeEnv, charts *metrics.Charts) *TechnicalIndicatorBot {
+func New(tradeEnv *tradeenv.TradeEnv, charts *metrics.Charts, figi string, candleInterval investapi.CandleInterval) *TechnicalIndicatorBot {
 	bot := new(TechnicalIndicatorBot)
+
+	bot.figi = figi
+	bot.candleInterval = candleInterval
+
 	bot.tradeEnv = tradeEnv
 	bot.charts = charts
 
@@ -27,9 +31,11 @@ func New(tradeEnv *tradeenv.TradeEnv, charts *metrics.Charts) *TechnicalIndicato
 }
 
 func (bot *TechnicalIndicatorBot) loop() {
-	// get the next candle from candle stream
-	candle := <-bot.tradeEnv.Channels[bot.figi].Candle
-	log.Println(candle.Close)
+	for {
+		// get the next candle from candle stream
+		status := <-bot.tradeEnv.Channels[bot.figi].TradingStatus
+		log.Println(status.TradingStatus)
+	}
 }
 
 func (bot *TechnicalIndicatorBot) Serve() {

@@ -110,7 +110,7 @@ func main() {
 
 		log.Println("Starting a sandbox bot...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, charts)
+		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval])
 
 		go bot.Serve()
 
@@ -125,7 +125,7 @@ func main() {
 
 		log.Println("Starting a combat bot...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, charts)
+		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval])
 
 		go bot.Serve()
 

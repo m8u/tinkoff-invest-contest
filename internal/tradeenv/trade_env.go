@@ -1,6 +1,7 @@
 package tradeenv
 
 import (
+	"log"
 	"tinkoff-invest-contest/internal/client"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/config"
@@ -14,7 +15,7 @@ type TradeEnv struct {
 	Accounts  []*investapi.Account
 	fee       float64
 
-	Channels map[string]MarketDataChannels
+	Channels map[string]MarketDataChannelStack
 }
 
 func New(config config.Config) *TradeEnv {
@@ -23,6 +24,7 @@ func New(config config.Config) *TradeEnv {
 	tradeEnv.Client.InitMarketDataStream()
 	tradeEnv.IsSandbox = true
 	tradeEnv.fee = config.Fee
+	tradeEnv.Channels = make(map[string]MarketDataChannelStack)
 
 	if config.IsSandbox {
 		tradeEnv.Accounts = make([]*investapi.Account, 0)
@@ -42,19 +44,60 @@ func New(config config.Config) *TradeEnv {
 
 	tradeEnv.token = config.Token
 
+	go tradeEnv.Client.RunMarketDataStreamLoop(tradeEnv.handleMarketDataStream)
+
 	return tradeEnv
 }
 
-type MarketDataChannels struct {
-	TradingStatus chan investapi.TradingStatus
-	Candle        chan investapi.Candle
-	OrderBook     chan investapi.OrderBook
+func (tradeEnv *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {
+	subscribeInfoResp := event.GetSubscribeInfoResponse()
+	if subscribeInfoResp != nil {
+		for _, s := range subscribeInfoResp.InfoSubscriptions {
+			if s.SubscriptionStatus != investapi.SubscriptionStatus_SUBSCRIPTION_STATUS_SUCCESS {
+				log.Fatalf("failed to subscribe to info (%v): %v", s.Figi, s.SubscriptionStatus.String())
+			}
+		}
+	}
+	subscribeCandlesResp := event.GetSubscribeCandlesResponse()
+	if subscribeCandlesResp != nil {
+		for _, s := range subscribeCandlesResp.CandlesSubscriptions {
+			if s.SubscriptionStatus != investapi.SubscriptionStatus_SUBSCRIPTION_STATUS_SUCCESS {
+				log.Fatalf("failed to subscribe to candles (%v): %v", s.Figi, s.SubscriptionStatus.String())
+			}
+		}
+	}
+	subscribeOrderBookResp := event.GetSubscribeOrderBookResponse()
+	if subscribeOrderBookResp != nil {
+		for _, s := range subscribeOrderBookResp.OrderBookSubscriptions {
+			if s.SubscriptionStatus != investapi.SubscriptionStatus_SUBSCRIPTION_STATUS_SUCCESS {
+				log.Fatalf("failed to subscribe to order book (%v): %v", s.Figi, s.SubscriptionStatus.String())
+			}
+		}
+	}
+	tradingStatus := event.GetTradingStatus()
+	if tradingStatus != nil {
+		tradeEnv.Channels[tradingStatus.Figi].TradingStatus <- tradingStatus
+	}
+	candle := event.GetCandle()
+	if candle != nil {
+		tradeEnv.Channels[tradingStatus.Figi].Candle <- candle
+	}
+	orderBook := event.GetOrderbook()
+	if orderBook != nil {
+		tradeEnv.Channels[tradingStatus.Figi].OrderBook <- orderBook
+	}
+}
+
+type MarketDataChannelStack struct {
+	TradingStatus chan *investapi.TradingStatus
+	Candle        chan *investapi.Candle
+	OrderBook     chan *investapi.OrderBook
 }
 
 func (tradeEnv TradeEnv) InitChannels(figi string) {
-	tradeEnv.Channels[figi] = MarketDataChannels{
-		TradingStatus: make(chan investapi.TradingStatus),
-		Candle:        make(chan investapi.Candle),
-		OrderBook:     make(chan investapi.OrderBook),
+	tradeEnv.Channels[figi] = MarketDataChannelStack{
+		TradingStatus: make(chan *investapi.TradingStatus),
+		Candle:        make(chan *investapi.Candle),
+		OrderBook:     make(chan *investapi.OrderBook),
 	}
 }
