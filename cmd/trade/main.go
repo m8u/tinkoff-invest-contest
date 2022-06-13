@@ -145,6 +145,7 @@ func main() {
 		signal.Stop(ch)
 		log.Println("Exiting...")
 		appstate.ShouldExit = true
+		appstate.ExitChan <- true
 		time.Sleep(5 * time.Second)
 		os.Exit(0)
 	}()

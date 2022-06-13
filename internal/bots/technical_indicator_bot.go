@@ -2,6 +2,7 @@ package bots
 
 import (
 	"log"
+	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/tradeenv"
@@ -31,22 +32,36 @@ func New(tradeEnv *tradeenv.TradeEnv, charts *metrics.Charts, figi string, candl
 }
 
 func (bot *TechnicalIndicatorBot) loop() {
-	for {
-		// get the next candle from candle stream
-		status := <-bot.tradeEnv.Channels[bot.figi].TradingStatus
-		log.Println(status.TradingStatus)
+	for !appstate.ShouldExit {
+		candle := <-bot.tradeEnv.Channels[bot.figi].Candle
+		log.Println(candle)
 	}
 }
 
 func (bot *TechnicalIndicatorBot) Serve() {
-	for {
+	for !appstate.ShouldExit {
 		utils.WaitForInternetConnection()
 
-		err := bot.tradeEnv.Client.SubscribeInfo(bot.figi)
-		utils.MaybeCrash(err)
-		err = bot.tradeEnv.Client.SubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
+		err := bot.tradeEnv.Client.SubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 		utils.MaybeCrash(err)
 
+		go func() {
+			<-appstate.ExitChan
+			bot.exitActions()
+		}()
+
 		bot.loop()
+	}
+}
+
+func (bot *TechnicalIndicatorBot) exitActions() {
+	err := bot.tradeEnv.Client.UnsubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
+	utils.MaybeCrash(err)
+
+	if bot.tradeEnv.IsSandbox {
+		for _, account := range bot.tradeEnv.Accounts {
+			_, err := bot.tradeEnv.Client.CloseSandboxAccount(account.Id)
+			utils.MaybeCrash(err)
+		}
 	}
 }
