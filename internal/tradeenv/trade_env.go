@@ -80,11 +80,11 @@ func (tradeEnv *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResp
 	}
 	candle := event.GetCandle()
 	if candle != nil {
-		tradeEnv.Channels[tradingStatus.Figi].Candle <- candle
+		tradeEnv.Channels[candle.Figi].Candle <- candle
 	}
 	orderBook := event.GetOrderbook()
 	if orderBook != nil {
-		tradeEnv.Channels[tradingStatus.Figi].OrderBook <- orderBook
+		tradeEnv.Channels[orderBook.Figi].OrderBook <- orderBook
 	}
 }
 
