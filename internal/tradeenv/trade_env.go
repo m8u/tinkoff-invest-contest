@@ -2,6 +2,8 @@ package tradeenv
 
 import (
 	"log"
+	"time"
+	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/config"
@@ -46,7 +48,21 @@ func New(config config.Config) *TradeEnv {
 
 	go tradeEnv.Client.RunMarketDataStreamLoop(tradeEnv.handleMarketDataStream)
 
+	go func() {
+		<-appstate.ExitChan
+		tradeEnv.exitActions()
+	}()
+
 	return tradeEnv
+}
+
+func (tradeEnv *TradeEnv) exitActions() {
+	if tradeEnv.IsSandbox {
+		for _, account := range tradeEnv.Accounts {
+			_, err := tradeEnv.Client.CloseSandboxAccount(account.Id)
+			utils.MaybeCrash(err)
+		}
+	}
 }
 
 func (tradeEnv *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {
@@ -94,10 +110,37 @@ type MarketDataChannelStack struct {
 	OrderBook     chan *investapi.OrderBook
 }
 
-func (tradeEnv TradeEnv) InitChannels(figi string) {
+func (tradeEnv *TradeEnv) InitChannels(figi string) {
 	tradeEnv.Channels[figi] = MarketDataChannelStack{
 		TradingStatus: make(chan *investapi.TradingStatus),
 		Candle:        make(chan *investapi.Candle),
 		OrderBook:     make(chan *investapi.OrderBook),
 	}
+}
+
+func (tradeEnv *TradeEnv) GetCandlesFor1NthDayBeforeNow(figi string,
+	candleInterval investapi.CandleInterval, n int) ([]*investapi.HistoricCandle, error) {
+	candles, err := tradeEnv.Client.GetCandles(
+		figi,
+		time.Now().Add(-time.Duration(n+1)*24*time.Hour),
+		time.Now().Add(-time.Duration(n)*24*time.Hour),
+		candleInterval,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return candles, nil
+}
+
+func (tradeEnv *TradeEnv) GetAtLeastNLastCandles(figi string,
+	candleInterval investapi.CandleInterval, n int) ([]*investapi.HistoricCandle, error) {
+	candles := make([]*investapi.HistoricCandle, 0)
+	for i := 0; len(candles) < n; i++ {
+		portion, err := tradeEnv.GetCandlesFor1NthDayBeforeNow(figi, candleInterval, i)
+		if err != nil {
+			return nil, err
+		}
+		candles = append(portion, candles...)
+	}
+	return candles, nil
 }

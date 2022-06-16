@@ -14,6 +14,7 @@ import (
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/bots"
 	"tinkoff-invest-contest/internal/config"
+	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
@@ -41,9 +42,9 @@ func main() {
 			"'15min'\n"+
 			"'hour'\n",
 	)
-	//var window = flag.Int("window", 60,
-	//	"Bollinger Bands MA window size",
-	//)
+	var window = flag.Int("window", 60,
+		"Bollinger Bands MA window size",
+	)
 	//var bollingerCoef = flag.Float64("bollinger_coef", 3,
 	//	"Bollinger Bands coefficient (number of standard deviations)",
 	//)
@@ -87,14 +88,9 @@ func main() {
 		NumAccounts: 1,
 		Money:       *startMoney,
 		Fee:         *fee,
-		Instruments: []config.ConfigInstrument{
-			{
-				FIGI:           *figi,
-				CandleInterval: utils.CandleIntervalsV1NamesToValues[*candleInterval],
-				OrderBookDepth: 10,
-			},
-		},
 	}
+
+	db.InitDB()
 
 	switch *mode {
 	case "sandbox":
@@ -102,30 +98,26 @@ func main() {
 			log.Fatalln("can't margin-trade in sandbox")
 		}
 		token := os.Getenv("SANDBOX_TOKEN")
-		if token == "" {
-			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
-		}
+		utils.AssureTokenIsProvided(token, true)
 
 		utils.WaitForInternetConnection()
 
 		log.Println("Starting a sandbox bot...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval])
+		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window)
 
 		go bot.Serve()
 
 		break
 	case "combat":
 		token := os.Getenv("COMBAT_TOKEN")
-		if token == "" {
-			log.Fatalln("please provide combat token via 'COMBAT_TOKEN' environment variable")
-		}
+		utils.AssureTokenIsProvided(token, false)
 
 		utils.WaitForInternetConnection()
 
 		log.Println("Starting a combat bot...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval])
+		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window)
 
 		go bot.Serve()
 

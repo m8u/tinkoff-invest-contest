@@ -41,6 +41,16 @@ func WaitForInternetConnection() {
 	appstate.NoInternetConnection = false
 }
 
+func AssureTokenIsProvided(token string, isSandbox bool) {
+	if token == "" {
+		if isSandbox {
+			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
+		} else {
+			log.Fatalln("please provide combat token via 'COMBAT_TOKEN' environment variable")
+		}
+	}
+}
+
 var CandleIntervalsV1NamesToValues = map[string]investapi.CandleInterval{
 	"1min":  investapi.CandleInterval_CANDLE_INTERVAL_1_MIN,
 	"5min":  investapi.CandleInterval_CANDLE_INTERVAL_5_MIN,

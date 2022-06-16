@@ -1,9 +1,10 @@
 package bots
 
 import (
-	"log"
+	"time"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client/investapi"
+	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
@@ -12,29 +13,45 @@ import (
 type TechnicalIndicatorBot struct {
 	figi           string
 	candleInterval investapi.CandleInterval
+	window         int
 
 	tradeEnv *tradeenv.TradeEnv
 	charts   *metrics.Charts
 }
 
-func New(tradeEnv *tradeenv.TradeEnv, charts *metrics.Charts, figi string, candleInterval investapi.CandleInterval) *TechnicalIndicatorBot {
+func New(tradeEnv *tradeenv.TradeEnv, charts *metrics.Charts, figi string, candleInterval investapi.CandleInterval,
+	window int) *TechnicalIndicatorBot {
 	bot := new(TechnicalIndicatorBot)
 
 	bot.figi = figi
 	bot.candleInterval = candleInterval
+	bot.window = window
 
 	bot.tradeEnv = tradeEnv
 	bot.charts = charts
 
 	bot.tradeEnv.InitChannels(bot.figi)
 
+	err := db.CreateCandlesTable(bot.figi)
+	utils.MaybeCrash(err)
+
 	return bot
 }
 
 func (bot *TechnicalIndicatorBot) loop() {
+	currentTimestamp := time.Time{}
+
 	for !appstate.ShouldExit {
+		// Get candle from stream
 		candle := <-bot.tradeEnv.Channels[bot.figi].Candle
-		log.Println(candle)
+		if candle.Time.AsTime() != currentTimestamp {
+			// On a new candle, update historic candles in amount of >= window
+			candles, err := bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
+			utils.MaybeCrash(err)
+			err = db.InsertCandles(bot.figi, candles)
+			utils.MaybeCrash(err)
+			currentTimestamp = candle.Time.AsTime()
+		}
 	}
 }
 
@@ -57,11 +74,4 @@ func (bot *TechnicalIndicatorBot) Serve() {
 func (bot *TechnicalIndicatorBot) exitActions() {
 	err := bot.tradeEnv.Client.UnsubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 	utils.MaybeCrash(err)
-
-	if bot.tradeEnv.IsSandbox {
-		for _, account := range bot.tradeEnv.Accounts {
-			_, err := bot.tradeEnv.Client.CloseSandboxAccount(account.Id)
-			utils.MaybeCrash(err)
-		}
-	}
 }
