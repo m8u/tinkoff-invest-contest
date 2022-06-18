@@ -1,4 +1,4 @@
-FROM golang:latest as build
+FROM golang:1.18.3
 
 WORKDIR /usr/src/tinkoff-invest-contest
 
@@ -6,7 +6,7 @@ COPY go.mod ./
 RUN go mod download && go mod verify
 
 COPY . .
-COPY ./.env .
+COPY .env .
 RUN go build -o trade ./cmd/trade/main.go
 
 CMD ./trade --mode sandbox

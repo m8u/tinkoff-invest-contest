@@ -17,7 +17,7 @@ func TestTradeEnv_GetAtLeastNLastCandles(t *testing.T) {
 	}
 	_ = godotenv.Load(".env")
 	token := os.Getenv("SANDBOX_TOKEN")
-	utils.AssureTokenIsProvided(token, true)
+	utils.EnsureTinkoffTokenIsProvided(token, true)
 	tradeEnv := New(config.Config{
 		IsSandbox:   true,
 		Token:       token,

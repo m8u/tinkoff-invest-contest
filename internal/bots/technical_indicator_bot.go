@@ -4,6 +4,7 @@ import (
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client/investapi"
+	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/tradeenv"
@@ -35,11 +36,19 @@ func New(tradeEnv *tradeenv.TradeEnv, charts *metrics.Charts, figi string, candl
 	err := db.CreateCandlesTable(bot.figi)
 	utils.MaybeCrash(err)
 
+	err = dashboard.AddBotDashboard(bot.figi)
+	utils.MaybeCrash(err)
+
 	return bot
 }
 
 func (bot *TechnicalIndicatorBot) loop() {
 	currentTimestamp := time.Time{}
+
+	candles, err := bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
+	utils.MaybeCrash(err)
+	err = db.InsertCandles(bot.figi, candles)
+	utils.MaybeCrash(err)
 
 	for !appstate.ShouldExit {
 		// Get candle from stream
@@ -52,6 +61,8 @@ func (bot *TechnicalIndicatorBot) loop() {
 			utils.MaybeCrash(err)
 			currentTimestamp = candle.Time.AsTime()
 		}
+		err := db.UpdateLastCandle(bot.figi, candle)
+		utils.MaybeCrash(err)
 	}
 }
 

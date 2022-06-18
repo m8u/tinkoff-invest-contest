@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
@@ -41,14 +42,28 @@ func WaitForInternetConnection() {
 	appstate.NoInternetConnection = false
 }
 
-func AssureTokenIsProvided(token string, isSandbox bool) {
+func GetSandboxToken() string {
+	token := os.Getenv("SANDBOX_TOKEN")
 	if token == "" {
-		if isSandbox {
-			log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
-		} else {
-			log.Fatalln("please provide combat token via 'COMBAT_TOKEN' environment variable")
-		}
+		log.Fatalln("please provide sandbox token via 'SANDBOX_TOKEN' environment variable")
 	}
+	return token
+}
+
+func GetCombatToken() string {
+	token := os.Getenv("COMBAT_TOKEN")
+	if token == "" {
+		log.Fatalln("please provide combat token via 'COMBAT_TOKEN' environment variable")
+	}
+	return token
+}
+
+func GetGrafanaToken() string {
+	token := os.Getenv("GRAFANA_TOKEN")
+	if token == "" {
+		log.Fatalln("please provide Grafana admin token via 'GRAFANA_TOKEN' environment variable")
+	}
+	return token
 }
 
 var CandleIntervalsV1NamesToValues = map[string]investapi.CandleInterval{

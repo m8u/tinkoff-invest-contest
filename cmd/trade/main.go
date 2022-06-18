@@ -14,6 +14,7 @@ import (
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/bots"
 	"tinkoff-invest-contest/internal/config"
+	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/metrics"
 	"tinkoff-invest-contest/internal/tradeenv"
@@ -26,7 +27,7 @@ func main() {
 			"'sandbox' - Start a sandbox bot\n"+
 			"'combat'  - Start a combat bot",
 	)
-	var figi = flag.String("figi", "BBG006L8G4H1",
+	var figi = flag.String("figi", "BBG004730RP0",
 		"FIGI of a stock to bollinger_bot",
 	)
 	var startMoney = flag.Float64("start_money", 100000,
@@ -84,21 +85,20 @@ func main() {
 
 	tradeEnvConfig := config.Config{
 		IsSandbox:   true,
-		Token:       os.Getenv("SANDBOX_TOKEN"),
+		Token:       utils.GetSandboxToken(),
 		NumAccounts: 1,
 		Money:       *startMoney,
 		Fee:         *fee,
 	}
 
 	db.InitDB()
+	dashboard.InitGrafana()
 
 	switch *mode {
 	case "sandbox":
 		if *allowMargin {
 			log.Fatalln("can't margin-trade in sandbox")
 		}
-		token := os.Getenv("SANDBOX_TOKEN")
-		utils.AssureTokenIsProvided(token, true)
 
 		utils.WaitForInternetConnection()
 
@@ -110,9 +110,6 @@ func main() {
 
 		break
 	case "combat":
-		token := os.Getenv("COMBAT_TOKEN")
-		utils.AssureTokenIsProvided(token, false)
-
 		utils.WaitForInternetConnection()
 
 		log.Println("Starting a combat bot...")
@@ -138,6 +135,7 @@ func main() {
 		log.Println("Exiting...")
 		appstate.ShouldExit = true
 		appstate.ExitChan <- true
+
 		time.Sleep(5 * time.Second)
 		os.Exit(0)
 	}()

@@ -2,23 +2,41 @@ version: "3.3"
 services:
   db:
     container_name: db
-    image: postgres
+    build:
+      context: .
+      dockerfile: build/db/Dockerfile
     volumes:
       - data:/var/lib/postgresql/data
+  grafana:
+    container_name: grafana
+    image: grafana/grafana-oss:9.0.0
     environment:
-      - POSTGRES_DB=tinkoff_invest_contest
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=db:5432
+      - GF_DATABASE_USER=postgres
+      - GF_DATABASE_PASSWORD=postgres
+      - GF_DATABASE_SSL_MODE=disable
+      - GF_LOG_LEVEL=warn
+    depends_on:
+      - db
+    restart: always
+    links:
+      - db
+    ports:
+      - "3000:3000"
   trade:
     container_name: trade
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: build/trade/Dockerfile
     env_file:
       - .env
     depends_on:
       - db
+      - grafana
+    restart: on-failure:3
     links:
       - db
+      - grafana
 volumes:
   data:
