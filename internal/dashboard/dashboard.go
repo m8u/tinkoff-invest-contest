@@ -38,6 +38,7 @@ func InitGrafana() {
 
 	_, err = client.NewDataSource(&grafana.DataSource{
 		Name:      "PostgreSQL",
+		UID:       "PostgreSQL",
 		Type:      "postgres",
 		URL:       db.Host + ":5432",
 		Database:  db.DBname,

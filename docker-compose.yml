@@ -17,6 +17,7 @@ services:
       - GF_DATABASE_PASSWORD=postgres
       - GF_DATABASE_SSL_MODE=disable
       - GF_LOG_LEVEL=warn
+      - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
     depends_on:
       - db
     restart: always

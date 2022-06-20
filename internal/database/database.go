@@ -56,7 +56,10 @@ func CreateCandlesTable(figi string) error {
 func InsertCandles(figi string, candles []*investapi.HistoricCandle) error {
 	ensureDBInitialized()
 	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO %v_candles(open, high, low, close, volume, time)
-		VALUES (:open, :high, :low, :close, :volume, :time) ON CONFLICT DO NOTHING`, figi), sqlizeHistoricCandles(candles))
+		VALUES (:open, :high, :low, :close, :volume, :time)
+		ON CONFLICT (time) DO UPDATE
+		SET open=excluded.open, high=excluded.high, low=excluded.low, close=excluded.close, volume=excluded.volume`,
+		figi), sqlizeHistoricCandles(candles))
 	if err != nil {
 		return err
 	}
@@ -65,9 +68,11 @@ func InsertCandles(figi string, candles []*investapi.HistoricCandle) error {
 
 func UpdateLastCandle(figi string, candle *investapi.Candle) error {
 	ensureDBInitialized()
-	_, err := db.NamedExec(fmt.Sprintf(`UPDATE %v_candles
-		SET open=:open, high=:high, low=:low, close=:close, volume=:volume
-		WHERE time=:time`, figi), sqlizeCandle(candle))
+	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO %v_candles(open, high, low, close, volume, time)
+		VALUES (:open, :high, :low, :close, :volume, :time)
+		ON CONFLICT (time) DO UPDATE
+		SET open=excluded.open, high=excluded.high, low=excluded.low, close=excluded.close, volume=excluded.volume`,
+		figi), sqlizeCandle(candle))
 	if err != nil {
 		return err
 	}
@@ -87,12 +92,12 @@ func sqlizeHistoricCandles(candles []*investapi.HistoricCandle) []any {
 	sqlizedCandles := make([]any, 0)
 	for _, candle := range candles {
 		sqlizedCandles = append(sqlizedCandles, sqlCandle{
-			utils.FloatFromQuotation(candle.Open),
-			utils.FloatFromQuotation(candle.High),
-			utils.FloatFromQuotation(candle.Low),
-			utils.FloatFromQuotation(candle.Close),
-			candle.Volume,
-			candle.Time.AsTime(),
+			Open:   utils.FloatFromQuotation(candle.Open),
+			High:   utils.FloatFromQuotation(candle.High),
+			Low:    utils.FloatFromQuotation(candle.Low),
+			Close:  utils.FloatFromQuotation(candle.Close),
+			Volume: candle.Volume,
+			Time:   candle.Time.AsTime(),
 		})
 	}
 	return sqlizedCandles
@@ -100,11 +105,11 @@ func sqlizeHistoricCandles(candles []*investapi.HistoricCandle) []any {
 
 func sqlizeCandle(candle *investapi.Candle) any {
 	return sqlCandle{
-		utils.FloatFromQuotation(candle.Open),
-		utils.FloatFromQuotation(candle.High),
-		utils.FloatFromQuotation(candle.Low),
-		utils.FloatFromQuotation(candle.Close),
-		candle.Volume,
-		candle.Time.AsTime(),
+		Open:   utils.FloatFromQuotation(candle.Open),
+		High:   utils.FloatFromQuotation(candle.High),
+		Low:    utils.FloatFromQuotation(candle.Low),
+		Close:  utils.FloatFromQuotation(candle.Close),
+		Volume: candle.Volume,
+		Time:   candle.Time.AsTime(),
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client/investapi"
@@ -103,7 +104,11 @@ func MoneyValueFromFloat(currency string, value float64) *investapi.MoneyValue {
 }
 
 func FloatFromMoneyValue(m *investapi.MoneyValue) float64 {
-	return float64(m.Units) + float64(m.Nano)/math.Pow(10, float64(len(fmt.Sprint(m.Nano))))
+	f, err := strconv.ParseFloat(fmt.Sprintf("%+d", m.Units)+
+		"."+
+		fmt.Sprintf("%09d", int64(math.Abs(float64(m.Nano)))), 64)
+	MaybeCrash(err)
+	return f
 }
 
 func QuotationFromFloat(value float64) *investapi.Quotation {
@@ -115,7 +120,11 @@ func QuotationFromFloat(value float64) *investapi.Quotation {
 }
 
 func FloatFromQuotation(q *investapi.Quotation) float64 {
-	return float64(q.Units) + float64(q.Nano)/math.Pow(10, float64(len(fmt.Sprint(q.Nano))))
+	f, err := strconv.ParseFloat(fmt.Sprintf("%+d", q.Units)+
+		"."+
+		fmt.Sprintf("%09d", int64(math.Abs(float64(q.Nano)))), 64)
+	MaybeCrash(err)
+	return f
 }
 
 type Tariff string
