@@ -52,44 +52,48 @@ func (bot *TechnicalIndicatorBot) loop() error {
 	var candles []*investapi.HistoricCandle
 	var err error
 
-	for !appstate.ShouldExit {
+	for {
+		select {
 		// Get candle from stream
-		currentCandle := <-bot.tradeEnv.Channels[bot.figi].Candle
-		if currentCandle.Time.AsTime() != currentTimestamp {
-			// On a new candle, get historic candles in amount of >= window
-			candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
-			if err != nil {
-				return err
+		case currentCandle := <-bot.tradeEnv.Channels[bot.figi].Candle:
+			if currentCandle.Time.AsTime() != currentTimestamp {
+				// On a new candle, get historic candles in amount of >= window
+				candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
+				if err != nil {
+					return err
+				}
+				// Trim excessive candles
+				candles = candles[len(candles)-(bot.window-1):]
+				go func() {
+					db.InsertCandles(bot.figi, candles)
+				}()
+				currentTimestamp = currentCandle.Time.AsTime()
 			}
-			// Trim excessive candles
-			candles = candles[len(candles)-(bot.window-1):]
 			go func() {
-				db.InsertCandles(bot.figi, candles)
+				db.UpdateLastCandle(bot.figi, currentCandle)
 			}()
-			currentTimestamp = currentCandle.Time.AsTime()
-		}
-		go func() {
-			db.UpdateLastCandle(bot.figi, currentCandle)
-		}()
 
-		// Get trade signal
-		_, indicatorValues := bot.strategy.GetTradeSignal(
-			append(candles,
-				&investapi.HistoricCandle{
-					Open:   currentCandle.Open,
-					High:   currentCandle.High,
-					Low:    currentCandle.Low,
-					Close:  currentCandle.Close,
-					Volume: currentCandle.Volume,
-				},
-			),
-		)
-		indicatorValues["time"] = currentCandle.Time.AsTime()
-		go func() {
-			db.AddIndicatorValues(bot.figi, indicatorValues)
-		}()
+			// Get trade signal
+			_, indicatorValues := bot.strategy.GetTradeSignal(
+				append(candles,
+					&investapi.HistoricCandle{
+						Open:   currentCandle.Open,
+						High:   currentCandle.High,
+						Low:    currentCandle.Low,
+						Close:  currentCandle.Close,
+						Volume: currentCandle.Volume,
+					},
+				),
+			)
+			indicatorValues["time"] = currentCandle.Time.AsTime()
+			go func() {
+				db.AddIndicatorValues(bot.figi, indicatorValues)
+			}()
+			break
+		case <-appstate.ExitChan:
+			return nil
+		}
 	}
-	return nil
 }
 
 func (bot *TechnicalIndicatorBot) Serve() {
