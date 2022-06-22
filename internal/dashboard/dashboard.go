@@ -64,10 +64,16 @@ func InitGrafana() {
 	}
 }
 
+func ensureGrafanaInitialized() {
+	if client == nil {
+		log.Fatalln("Grafana API client was not initialized")
+	}
+}
+
 func AddBotDashboard(figi string) error {
+	ensureGrafanaInitialized()
 	modelStr := string(botDashboardTemplate)
 	modelStr = strings.ReplaceAll(modelStr, "<figi>", strings.ToLower(figi))
-	//modelStr = strings.ReplaceAll(modelStr, "<datasrc_id>", strconv.FormatInt(dataSrcId, 10))
 	var model map[string]any
 	_ = json.Unmarshal([]byte(modelStr), &model)
 	dashboard := grafana.Dashboard{

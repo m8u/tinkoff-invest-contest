@@ -5,7 +5,6 @@ import (
 	"github.com/joho/godotenv"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,7 +15,7 @@ import (
 	"tinkoff-invest-contest/internal/config"
 	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
-	"tinkoff-invest-contest/internal/metrics"
+	"tinkoff-invest-contest/internal/strategies/ti/bollinger"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -46,12 +45,12 @@ func main() {
 	var window = flag.Int("window", 60,
 		"Bollinger Bands MA window size",
 	)
-	//var bollingerCoef = flag.Float64("bollinger_coef", 3,
-	//	"Bollinger Bands coefficient (number of standard deviations)",
-	//)
-	//var maxPointDeviation = flag.Float64("max_point_dev", 0.001,
-	//	"Maximum relative deviation when detecting price-bound intersections (normalized, e.g. 0.001 for 0.1%)",
-	//)
+	var bollingerCoef = flag.Float64("bollinger_coef", 3,
+		"Bollinger Bands coefficient (number of standard deviations)",
+	)
+	var maxPointDeviation = flag.Float64("max_point_dev", 0.001,
+		"Maximum relative deviation when detecting price-bound intersections (normalized, e.g. 0.001 for 0.1%)",
+	)
 	var allowMargin = flag.Bool("allow_margin", false,
 		"(for --mode=combat) Either allow margin trading or not (1 or 0) (default: 0)",
 	)
@@ -79,8 +78,6 @@ func main() {
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(multiWriter)
 
-	charts := metrics.NewCharts()
-
 	_ = godotenv.Load(".env")
 
 	tradeEnvConfig := config.Config{
@@ -102,9 +99,10 @@ func main() {
 
 		utils.WaitForInternetConnection()
 
-		log.Println("Starting a sandbox bot...")
+		log.Println("Creating sandbox trade environment...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window)
+		bot := bots.New(tradeEnv, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window,
+			bollinger.New(*bollingerCoef, *maxPointDeviation))
 
 		go bot.Serve()
 
@@ -112,9 +110,10 @@ func main() {
 	case "combat":
 		utils.WaitForInternetConnection()
 
-		log.Println("Starting a combat bot...")
+		log.Println("Creating combat trade environment...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, charts, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window)
+		bot := bots.New(tradeEnv, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window,
+			bollinger.New(*bollingerCoef, *maxPointDeviation))
 
 		go bot.Serve()
 
@@ -129,7 +128,7 @@ func main() {
 	// и устанавливала флаг ShouldExit
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
-	go func() {
+	func() {
 		<-ch
 		signal.Stop(ch)
 		log.Println("Exiting...")
@@ -139,10 +138,4 @@ func main() {
 		time.Sleep(5 * time.Second)
 		os.Exit(0)
 	}()
-
-	// запускаем сервер с графиками
-	http.HandleFunc("/", charts.HandleTradingChart)
-	http.HandleFunc("/balance", charts.HandleBalanceChart)
-	log.Println("Starting echarts server at localhost:8081 (press Ctrl-C to exit)")
-	log.Fatalln(http.ListenAndServe(":8081", nil))
 }

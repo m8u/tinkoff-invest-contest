@@ -35,7 +35,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "fixed"
+            "mode": "palette-classic"
           },
           "custom": {
             "axisLabel": "",
@@ -50,6 +50,9 @@
               "viz": false
             },
             "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
@@ -65,7 +68,7 @@
               "mode": "off"
             }
           },
-          "decimals": 1,
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -104,7 +107,7 @@
           "open": "open",
           "volume": "volume"
         },
-        "includeAllFields": false,
+        "includeAllFields": true,
         "legend": {
           "calcs": [],
           "displayMode": "hidden",
@@ -122,8 +125,8 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": false,
-          "rawSql": "SELECT\n  \"time\" AS \"time\",\n  open, high, low, close, volume\nFROM <figi>_candles\nWHERE\n  $__timeFilter(\"time\")\nORDER BY 1",
-          "refId": "A",
+          "rawSql": "SELECT \"time\" AS \"time\",\n  open, high, low, close, volume FROM <figi>_candles WHERE $__timeFilter(\"time\") ORDER BY 1",
+          "refId": "candles",
           "select": [
             [
               {
@@ -137,6 +140,39 @@
           "table": "<figi>_candles",
           "timeColumn": "\"time\"",
           "timeColumnType": "timestamp",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "PostgreSQL"
+          },
+          "format": "time_series",
+          "group": [],
+          "hide": false,
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  *\nFROM <figi>_indicators\nWHERE\n  $__timeFilter(\"time\")\nORDER BY 1",
+          "refId": "indicators",
+          "select": [
+            [
+              {
+                "params": [
+                  "*"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "table": "<figi>_indicators",
+          "timeColumn": "\"time\"",
+          "timeColumnType": "timestamptz",
           "where": [
             {
               "name": "$__timeFilter",
