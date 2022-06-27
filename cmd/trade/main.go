@@ -15,12 +15,14 @@ import (
 	"tinkoff-invest-contest/internal/config"
 	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
-	"tinkoff-invest-contest/internal/strategies/ti/bollinger"
+	"tinkoff-invest-contest/internal/strategies/tistrategy/bollinger"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
 
 func main() {
+	appstate.ExitActionsWG.Add(1)
+
 	var mode = flag.String("mode", "",
 		"Modes are:\n"+
 			"'sandbox' - Start a sandbox bot\n"+
@@ -101,41 +103,48 @@ func main() {
 
 		log.Println("Creating sandbox trade environment...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window,
-			bollinger.New(*bollingerCoef, *maxPointDeviation))
+		bot := bots.New(
+			tradeEnv,
+			*figi,
+			utils.InstrumentType_INSTRUMENT_TYPE_SHARE,
+			utils.CandleIntervalsV1NamesToValues[*candleInterval],
+			*window,
+			bollinger.New(*bollingerCoef, *maxPointDeviation),
+		)
 
 		go bot.Serve()
 
-		break
 	case "combat":
 		utils.WaitForInternetConnection()
 
 		log.Println("Creating combat trade environment...")
 		tradeEnv := tradeenv.New(tradeEnvConfig)
-		bot := bots.New(tradeEnv, *figi, utils.CandleIntervalsV1NamesToValues[*candleInterval], *window,
-			bollinger.New(*bollingerCoef, *maxPointDeviation))
+		bot := bots.New(
+			tradeEnv,
+			*figi,
+			utils.InstrumentType_INSTRUMENT_TYPE_SHARE,
+			utils.CandleIntervalsV1NamesToValues[*candleInterval],
+			*window,
+			bollinger.New(*bollingerCoef, *maxPointDeviation),
+		)
 
 		go bot.Serve()
 
-		break
 	default:
 		log.Println("no mode specified, or there is no such mode\n" +
 			"Try '--help' for more info")
 		os.Exit(0)
 	}
 
-	// запустим goroutine-у чтобы ждала один из сигналов прекращения работы
-	// и устанавливала флаг ShouldExit
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
-	func() {
-		<-ch
-		signal.Stop(ch)
-		log.Println("Exiting...")
-		appstate.ShouldExit = true
-		appstate.ExitChan <- true
-
-		time.Sleep(5 * time.Second)
-		os.Exit(0)
-	}()
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
+	// Wait for termination signal
+	<-ch
+	signal.Stop(ch)
+	log.Println("Exiting...")
+	// Trigger exit actions
+	appstate.ShouldExit = true
+	appstate.ExitActionsWG.Done()
+	// Wait for all to complete before exiting
+	appstate.PostExitActionsWG.Wait()
 }

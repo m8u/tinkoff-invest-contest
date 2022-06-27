@@ -1,6 +1,9 @@
 package appstate
 
+import "sync"
+
 var ShouldExit = false
 var NoInternetConnection = false
 
-var ExitChan = make(chan bool)
+var ExitActionsWG sync.WaitGroup
+var PostExitActionsWG sync.WaitGroup

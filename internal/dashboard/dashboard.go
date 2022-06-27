@@ -17,21 +17,21 @@ func InitGrafana() {
 	var err error
 	client, err = grafana.New("http://grafana:3000", grafana.Config{
 		APIKey:     utils.GetGrafanaToken(),
-		NumRetries: 10,
+		NumRetries: 1,
 	})
 	if err != nil {
-		log.Fatalf("unable to connect Grafana: %v", err)
+		log.Fatalf("error creating Grafana API client: %v", err)
 	}
 
 	dataSources, err := client.DataSources()
 	if err != nil {
-		log.Fatalf("can't get Grafana datasources: %v", err)
+		log.Printf("can't get Grafana datasources: %v", err)
 	}
 	for _, dataSource := range dataSources {
 		if dataSource.Name == "PostgreSQL" {
 			err := client.DeleteDataSource(dataSource.ID)
 			if err != nil {
-				log.Fatalf("can't delete Grafana datasource: %v", err)
+				log.Printf("can't delete Grafana datasource: %v", err)
 			}
 		}
 	}
@@ -55,7 +55,8 @@ func InitGrafana() {
 		},
 	})
 	if err != nil {
-		log.Fatalf("can't add Grafana datasource: %v", err)
+		log.Printf("can't add Grafana datasource: %v", err)
+		client = nil
 	}
 
 	botDashboardTemplate, err = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
@@ -64,14 +65,18 @@ func InitGrafana() {
 	}
 }
 
-func ensureGrafanaInitialized() {
+func IsGrafanaInitialized() bool {
 	if client == nil {
-		log.Fatalln("Grafana API client was not initialized")
+		log.Printf("Grafana API client was not initialized")
+		return false
 	}
+	return true
 }
 
 func AddBotDashboard(figi string) error {
-	ensureGrafanaInitialized()
+	if !IsGrafanaInitialized() {
+		return nil
+	}
 	modelStr := string(botDashboardTemplate)
 	modelStr = strings.ReplaceAll(modelStr, "<figi>", strings.ToLower(figi))
 	var model map[string]any

@@ -2,7 +2,7 @@ package tradeenv
 
 import (
 	"log"
-	"time"
+	"sync"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client"
 	"tinkoff-invest-contest/internal/client/investapi"
@@ -10,13 +10,19 @@ import (
 	"tinkoff-invest-contest/internal/utils"
 )
 
-type TradeEnv struct {
-	token     string
-	IsSandbox bool
-	Client    *client.Client
-	Accounts  []*investapi.Account
-	fee       float64
+type occupationRegistry struct {
+	mu    sync.Mutex
+	table map[string]bool // {accountId: isOccupied, ...}
+}
 
+type TradeEnv struct {
+	token                      string
+	isSandbox                  bool
+	accounts                   []*investapi.Account
+	accountsOccupationRegistry *occupationRegistry
+	fee                        float64
+
+	Client   *client.Client
 	Channels map[string]MarketDataChannelStack
 }
 
@@ -24,24 +30,27 @@ func New(config config.Config) *TradeEnv {
 	tradeEnv := new(TradeEnv)
 	tradeEnv.Client = client.NewClient(config.Token)
 	tradeEnv.Client.InitMarketDataStream()
-	tradeEnv.IsSandbox = true
+	tradeEnv.isSandbox = true
 	tradeEnv.fee = config.Fee
 	tradeEnv.Channels = make(map[string]MarketDataChannelStack)
 
 	if config.IsSandbox {
-		tradeEnv.Accounts = make([]*investapi.Account, 0)
+		tradeEnv.accounts = make([]*investapi.Account, 0)
+		tradeEnv.accountsOccupationRegistry = new(occupationRegistry)
+		tradeEnv.accountsOccupationRegistry.table = make(map[string]bool)
 		for i := 0; i < config.NumAccounts; i++ {
 			accountResp, err := tradeEnv.Client.OpenSandboxAccount()
 			utils.MaybeCrash(err)
 			_, err = tradeEnv.Client.SandboxPayIn(accountResp.AccountId, "rub", config.Money)
 			utils.MaybeCrash(err)
 
-			tradeEnv.Accounts = append(tradeEnv.Accounts, &investapi.Account{Id: accountResp.AccountId})
+			tradeEnv.accounts = append(tradeEnv.accounts, &investapi.Account{Id: accountResp.AccountId})
+			tradeEnv.accountsOccupationRegistry.table[accountResp.AccountId] = false
 		}
 	} else {
 		accounts, err := tradeEnv.Client.GetAccounts()
 		utils.MaybeCrash(err)
-		tradeEnv.Accounts = accounts
+		tradeEnv.accounts = accounts
 	}
 
 	tradeEnv.token = config.Token
@@ -49,98 +58,24 @@ func New(config config.Config) *TradeEnv {
 	go tradeEnv.Client.RunMarketDataStreamLoop(tradeEnv.handleMarketDataStream)
 
 	go func() {
-		<-appstate.ExitChan
+		appstate.ExitActionsWG.Wait()
 		tradeEnv.exitActions()
 	}()
+
+	appstate.PostExitActionsWG.Add(1)
 
 	return tradeEnv
 }
 
-func (tradeEnv *TradeEnv) exitActions() {
-	if tradeEnv.IsSandbox {
-		for _, account := range tradeEnv.Accounts {
-			_, err := tradeEnv.Client.CloseSandboxAccount(account.Id)
-			utils.MaybeCrash(err)
-		}
-	}
-}
+func (e *TradeEnv) exitActions() {
+	defer appstate.PostExitActionsWG.Done()
 
-func (tradeEnv *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {
-	subscribeInfoResp := event.GetSubscribeInfoResponse()
-	if subscribeInfoResp != nil {
-		for _, s := range subscribeInfoResp.InfoSubscriptions {
-			if s.SubscriptionStatus != investapi.SubscriptionStatus_SUBSCRIPTION_STATUS_SUCCESS {
-				log.Fatalf("failed to subscribe to info (%v): %v", s.Figi, s.SubscriptionStatus.String())
+	if e.isSandbox {
+		for _, account := range e.accounts {
+			_, err := e.Client.CloseSandboxAccount(account.Id)
+			if err != nil {
+				log.Println(utils.PrettifyError(err))
 			}
 		}
 	}
-	subscribeCandlesResp := event.GetSubscribeCandlesResponse()
-	if subscribeCandlesResp != nil {
-		for _, s := range subscribeCandlesResp.CandlesSubscriptions {
-			if s.SubscriptionStatus != investapi.SubscriptionStatus_SUBSCRIPTION_STATUS_SUCCESS {
-				log.Fatalf("failed to subscribe to candles (%v): %v", s.Figi, s.SubscriptionStatus.String())
-			}
-		}
-	}
-	subscribeOrderBookResp := event.GetSubscribeOrderBookResponse()
-	if subscribeOrderBookResp != nil {
-		for _, s := range subscribeOrderBookResp.OrderBookSubscriptions {
-			if s.SubscriptionStatus != investapi.SubscriptionStatus_SUBSCRIPTION_STATUS_SUCCESS {
-				log.Fatalf("failed to subscribe to order book (%v): %v", s.Figi, s.SubscriptionStatus.String())
-			}
-		}
-	}
-	tradingStatus := event.GetTradingStatus()
-	if tradingStatus != nil {
-		tradeEnv.Channels[tradingStatus.Figi].TradingStatus <- tradingStatus
-	}
-	candle := event.GetCandle()
-	if candle != nil {
-		tradeEnv.Channels[candle.Figi].Candle <- candle
-	}
-	orderBook := event.GetOrderbook()
-	if orderBook != nil {
-		tradeEnv.Channels[orderBook.Figi].OrderBook <- orderBook
-	}
-}
-
-type MarketDataChannelStack struct {
-	TradingStatus chan *investapi.TradingStatus
-	Candle        chan *investapi.Candle
-	OrderBook     chan *investapi.OrderBook
-}
-
-func (tradeEnv *TradeEnv) InitChannels(figi string) {
-	tradeEnv.Channels[figi] = MarketDataChannelStack{
-		TradingStatus: make(chan *investapi.TradingStatus),
-		Candle:        make(chan *investapi.Candle),
-		OrderBook:     make(chan *investapi.OrderBook),
-	}
-}
-
-func (tradeEnv *TradeEnv) GetCandlesFor1NthDayBeforeNow(figi string,
-	candleInterval investapi.CandleInterval, n int) ([]*investapi.HistoricCandle, error) {
-	candles, err := tradeEnv.Client.GetCandles(
-		figi,
-		time.Now().Add(-time.Duration(n+1)*24*time.Hour),
-		time.Now().Add(-time.Duration(n)*24*time.Hour),
-		candleInterval,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return candles, nil
-}
-
-func (tradeEnv *TradeEnv) GetAtLeastNLastCandles(figi string,
-	candleInterval investapi.CandleInterval, n int) ([]*investapi.HistoricCandle, error) {
-	candles := make([]*investapi.HistoricCandle, 0)
-	for i := 0; len(candles) < n; i++ {
-		portion, err := tradeEnv.GetCandlesFor1NthDayBeforeNow(figi, candleInterval, i)
-		if err != nil {
-			return nil, err
-		}
-		candles = append(portion, candles...)
-	}
-	return candles, nil
 }

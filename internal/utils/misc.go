@@ -18,9 +18,13 @@ import (
 // если ошибка != nil
 func MaybeCrash(err error) {
 	if err != nil {
-		_, filename, line, _ := runtime.Caller(1)
-		log.Fatalf("[error] %s:%d %v", filename, line, err)
+		log.Fatalln(PrettifyError(err))
 	}
+}
+
+func PrettifyError(err error) string {
+	_, filename, line, _ := runtime.Caller(1)
+	return fmt.Sprintf("[error] %s:%d %v", filename, line, err)
 }
 
 // WaitForInternetConnection пингует clients3.google.com, блокируя тред до успешного соединения
@@ -62,7 +66,7 @@ func GetCombatToken() string {
 func GetGrafanaToken() string {
 	token := os.Getenv("GRAFANA_TOKEN")
 	if token == "" {
-		log.Fatalln("please provide Grafana admin token via 'GRAFANA_TOKEN' environment variable")
+		log.Println("please provide Grafana admin token via 'GRAFANA_TOKEN' environment variable")
 	}
 	return token
 }

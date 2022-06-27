@@ -75,6 +75,22 @@ func newContextWithBearerToken(token string) context.Context {
 	return metadata.NewOutgoingContext(context.Background(), md)
 }
 
+func (c *Client) BondBy(idType investapi.InstrumentIdType, classCode string, id string) (*investapi.Bond, error) {
+	utils.WaitForInternetConnection()
+	bondResp, err := c.InstrumentsService.BondBy(
+		newContextWithBearerToken(c.token),
+		&investapi.InstrumentRequest{
+			IdType:    idType,
+			ClassCode: classCode,
+			Id:        id,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return bondResp.Instrument, nil
+}
+
 func (c *Client) CloseSandboxAccount(accountId string) (*investapi.CloseSandboxAccountResponse, error) {
 	utils.WaitForInternetConnection()
 	closeSandboxAccountResp, err := c.SandboxService.CloseSandboxAccount(
@@ -87,6 +103,54 @@ func (c *Client) CloseSandboxAccount(accountId string) (*investapi.CloseSandboxA
 		return nil, err
 	}
 	return closeSandboxAccountResp, nil
+}
+
+func (c *Client) CurrencyBy(idType investapi.InstrumentIdType, classCode string, id string) (*investapi.Currency, error) {
+	utils.WaitForInternetConnection()
+	currencyResp, err := c.InstrumentsService.CurrencyBy(
+		newContextWithBearerToken(c.token),
+		&investapi.InstrumentRequest{
+			IdType:    idType,
+			ClassCode: classCode,
+			Id:        id,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return currencyResp.Instrument, nil
+}
+
+func (c *Client) EtfBy(idType investapi.InstrumentIdType, classCode string, id string) (*investapi.Etf, error) {
+	utils.WaitForInternetConnection()
+	etfResp, err := c.InstrumentsService.EtfBy(
+		newContextWithBearerToken(c.token),
+		&investapi.InstrumentRequest{
+			IdType:    idType,
+			ClassCode: classCode,
+			Id:        id,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return etfResp.Instrument, nil
+}
+
+func (c *Client) FutureBy(idType investapi.InstrumentIdType, classCode string, id string) (*investapi.Future, error) {
+	utils.WaitForInternetConnection()
+	futureResp, err := c.InstrumentsService.FutureBy(
+		newContextWithBearerToken(c.token),
+		&investapi.InstrumentRequest{
+			IdType:    idType,
+			ClassCode: classCode,
+			Id:        id,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return futureResp.Instrument, nil
 }
 
 func (c *Client) GetAccounts() ([]*investapi.Account, error) {

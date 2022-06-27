@@ -1,4 +1,4 @@
-package ti
+package tistrategy
 
 import (
 	"tinkoff-invest-contest/internal/client/investapi"

@@ -2,6 +2,7 @@ package bollinger
 
 import (
 	"tinkoff-invest-contest/internal/client/investapi"
+	"tinkoff-invest-contest/internal/strategies/tistrategy"
 	indicators "tinkoff-invest-contest/internal/technical_indicators"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -27,11 +28,11 @@ func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*
 
 	currentCandle := candles[len(candles)-1]
 	var signal *utils.TradeSignal
-	if utils.IsAroundPoint(utils.FloatFromQuotation(currentCandle.Close), lowerBound, strategy.pointDeviation) {
+	if tistrategy.IsAroundPoint(utils.FloatFromQuotation(currentCandle.Close), lowerBound, strategy.pointDeviation) {
 		// Сигнал к покупке
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_BUY}
 
-	} else if utils.IsAroundPoint(utils.FloatFromQuotation(currentCandle.Close), upperBound, strategy.pointDeviation) {
+	} else if tistrategy.IsAroundPoint(utils.FloatFromQuotation(currentCandle.Close), upperBound, strategy.pointDeviation) {
 		// Сигнал к продаже
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}

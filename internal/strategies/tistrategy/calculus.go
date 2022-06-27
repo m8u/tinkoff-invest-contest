@@ -1,4 +1,4 @@
-package utils
+package tistrategy
 
 // IsAroundPoint определяет, находится ли точка samplePoint в окрестности
 // точки refPoint с допустимым отклонением deviation

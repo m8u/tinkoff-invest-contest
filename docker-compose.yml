@@ -5,8 +5,6 @@ services:
     build:
       context: .
       dockerfile: build/db/Dockerfile
-    volumes:
-      - data:/var/lib/postgresql/data
   grafana:
     container_name: grafana
     image: grafana/grafana-oss:9.0.0
@@ -39,5 +37,3 @@ services:
     links:
       - db
       - grafana
-volumes:
-  data:
