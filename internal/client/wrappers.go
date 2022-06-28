@@ -2,6 +2,7 @@ package client
 
 import (
 	"github.com/google/uuid"
+	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -32,10 +33,10 @@ func (c *Client) WrapOrder(isSandbox bool, figi string, quantity int64, price fl
 	direction investapi.OrderDirection, accountId string, orderType investapi.OrderType) (*investapi.PostOrderResponse, error) {
 	var order *investapi.PostOrderResponse
 	var err error
-	if isSandbox {
+	if isSandbox { // TODO: make Client interface, create SandboxClient and CombatClient which will implement that interface
 		order, err = c.PostSandboxOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
 		if err != nil {
-			return order, err
+			return nil, err
 		}
 		status := order.ExecutionReportStatus
 		for status != investapi.OrderExecutionReportStatus_EXECUTION_REPORT_STATUS_FILL {
@@ -44,11 +45,12 @@ func (c *Client) WrapOrder(isSandbox bool, figi string, quantity int64, price fl
 				return order, err
 			}
 			status = orderState.ExecutionReportStatus
+			time.Sleep(time.Second)
 		}
 	} else {
 		order, err = c.PostOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
 		if err != nil {
-			return order, err
+			return nil, err
 		}
 		status := order.ExecutionReportStatus
 		for status != investapi.OrderExecutionReportStatus_EXECUTION_REPORT_STATUS_FILL {
@@ -57,6 +59,7 @@ func (c *Client) WrapOrder(isSandbox bool, figi string, quantity int64, price fl
 				return order, err
 			}
 			status = orderState.ExecutionReportStatus
+			time.Sleep(time.Second)
 		}
 	}
 	return order, err

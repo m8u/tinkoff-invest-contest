@@ -21,7 +21,7 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 	var moneyHave float64
 	var lotsHave int64
 	for _, money := range positions.Money {
-		if money.Currency == "rub" {
+		if money.Currency == instrument.GetCurrency() {
 			moneyHave = utils.FloatFromMoneyValue(money)
 		}
 	}
@@ -85,14 +85,14 @@ func (e *TradeEnv) GetLotsHave(accountId string, instrument utils.InstrumentInte
 	if e.isSandbox {
 		positions, err = e.Client.GetSandboxPositions(accountId)
 	} else {
-		positions, err = e.Client.GetSandboxPositions(accountId)
+		positions, err = e.Client.GetPositions(accountId)
 	}
 	if err != nil {
 		return 0, err
 	}
 
 	var lotsHave int64
-	if len(positions.Securities) > 0 {
+	if len(positions.Securities) > 0 { // TODO: search by figi and also search currencies and futures too
 		lotsHave = positions.Securities[0].Balance / int64(instrument.GetLot())
 	} else {
 		lotsHave = 0

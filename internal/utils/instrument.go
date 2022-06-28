@@ -7,6 +7,7 @@ type InstrumentInterface interface {
 	GetDshort() *investapi.Quotation
 	GetLot() int32
 	GetShortEnabledFlag() bool
+	GetCurrency() string
 }
 
 type InstrumentType int32

@@ -53,6 +53,8 @@ func New(tradeEnv *tradeenv.TradeEnv, figi string, instrumentType utils.Instrume
 	return bot
 }
 
+var prevDirection investapi.OrderDirection
+
 func (bot *TechnicalIndicatorBot) loop() error {
 	currentTimestamp := time.Time{}
 
@@ -65,7 +67,6 @@ func (bot *TechnicalIndicatorBot) loop() error {
 		return err
 	}
 
-	var prevDirection investapi.OrderDirection
 	for !appstate.ShouldExit {
 		select {
 		// Get candle from stream
@@ -111,7 +112,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				var lots int64
 				shouldUnoccupyAccount := false
 				if bot.occupiedAccountId == "" {
-					accountId, unlock := bot.tradeEnv.GetUnoccupiedAccount()
+					accountId, unlock := bot.tradeEnv.GetUnoccupiedAccount(instrument.GetCurrency())
 					if accountId == "" {
 						unlock()
 						continue
@@ -133,7 +134,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 						unlock()
 						continue
 					}
-					bot.tradeEnv.SetAccountOccupied(accountId)
+					bot.tradeEnv.SetAccountOccupied(accountId, instrument.GetCurrency())
 					unlock()
 					bot.occupiedAccountId = accountId
 				} else if signal.Direction != prevDirection {
@@ -156,7 +157,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					bot.figi,
 					bot.occupiedAccountId,
 				)
-				order, err := bot.tradeEnv.DoOrder(
+				_, err := bot.tradeEnv.DoOrder(
 					bot.figi,
 					lots,
 					utils.FloatFromQuotation(currentCandle.Close),
@@ -165,12 +166,12 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					investapi.OrderType_ORDER_TYPE_MARKET,
 				)
 				if err != nil {
-					log.Printf("order error: %v, message: %v", utils.PrettifyError(err), order.Message)
+					log.Printf("order error: %v", utils.PrettifyError(err))
 					return err
 				}
 
 				if shouldUnoccupyAccount {
-					bot.tradeEnv.SetAccountUnoccupied(bot.occupiedAccountId)
+					bot.tradeEnv.SetAccountUnoccupied(bot.occupiedAccountId, instrument.GetCurrency())
 					bot.occupiedAccountId = ""
 				}
 
