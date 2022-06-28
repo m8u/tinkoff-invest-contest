@@ -1,18 +1,23 @@
 package tradeenv
 
-func (e *TradeEnv) GetUnoccupiedAccount() string {
+// GetUnoccupiedAccount returns an unnocupied account id or an empty string, if there isn't any.
+// Remember to call unlock() after calling SetAccountOccupied()
+// or after right calling this function, if obtained account does not satisfy fund requirements or no account returned
+func (e *TradeEnv) GetUnoccupiedAccount() (accountId string, unlock func()) {
+	unlock = func() {
+		e.accountsOccupationRegistry.mu.Unlock()
+	}
 	e.accountsOccupationRegistry.mu.Lock()
 	for _, account := range e.accounts {
 		if e.accountsOccupationRegistry.table[account.Id] != true {
-			return account.Id
+			return account.Id, unlock
 		}
 	}
-	return ""
+	return "", unlock
 }
 
 func (e *TradeEnv) SetAccountOccupied(accountId string) {
 	e.accountsOccupationRegistry.table[accountId] = true
-	e.accountsOccupationRegistry.mu.Unlock()
 }
 
 func (e *TradeEnv) SetAccountUnoccupied(accountId string) {

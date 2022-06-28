@@ -111,7 +111,11 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				var lots int64
 				shouldUnoccupyAccount := false
 				if bot.occupiedAccountId == "" {
-					accountId := bot.tradeEnv.GetUnoccupiedAccount()
+					accountId, unlock := bot.tradeEnv.GetUnoccupiedAccount()
+					if accountId == "" {
+						unlock()
+						continue
+					}
 					maxDealValue, err := bot.tradeEnv.CalculateMaxDealValue(
 						accountId,
 						signal.Direction,
@@ -121,10 +125,16 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					)
 					if err != nil {
 						log.Println(utils.PrettifyError(err))
+						unlock()
 						return err
 					}
 					lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Direction, maxDealValue, instrument, currentCandle.Close)
+					if lots == 0 {
+						unlock()
+						continue
+					}
 					bot.tradeEnv.SetAccountOccupied(accountId)
+					unlock()
 					bot.occupiedAccountId = accountId
 				} else if signal.Direction != prevDirection {
 					shouldUnoccupyAccount = true
@@ -134,19 +144,19 @@ func (bot *TechnicalIndicatorBot) loop() error {
 						return err
 					}
 					lots = int64(math.Abs(float64(lots)))
-				}
-				if lots == 0 {
+				} else {
 					continue
 				}
 
 				// Place an order and wait for it to be filled
-				log.Printf("\n[Order]\n%v lots for %v\n%v\nfigi: %v\n",
+				log.Printf("\n[Order]\n%v lots for %v\n%v\nfigi: %v\naccount: %v\n",
 					lots,
 					utils.FloatFromQuotation(currentCandle.Close),
 					signal.Direction.String(),
 					bot.figi,
+					bot.occupiedAccountId,
 				)
-				err := bot.tradeEnv.DoOrder(
+				order, err := bot.tradeEnv.DoOrder(
 					bot.figi,
 					lots,
 					utils.FloatFromQuotation(currentCandle.Close),
@@ -155,7 +165,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					investapi.OrderType_ORDER_TYPE_MARKET,
 				)
 				if err != nil {
-					log.Println(utils.PrettifyError(err))
+					log.Printf("order error: %v, message: %v", utils.PrettifyError(err), order.Message)
 					return err
 				}
 
@@ -163,6 +173,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					bot.tradeEnv.SetAccountUnoccupied(bot.occupiedAccountId)
 					bot.occupiedAccountId = ""
 				}
+
 				prevDirection = signal.Direction
 			}
 

@@ -29,33 +29,35 @@ func (c *Client) InstrumentByFigi(figi string, instrumentType utils.InstrumentTy
 
 // WrapOrder posts either sandbox or real order with automatically generated orderId and waits for order to be filled
 func (c *Client) WrapOrder(isSandbox bool, figi string, quantity int64, price float64,
-	direction investapi.OrderDirection, accountId string, orderType investapi.OrderType) error {
+	direction investapi.OrderDirection, accountId string, orderType investapi.OrderType) (*investapi.PostOrderResponse, error) {
+	var order *investapi.PostOrderResponse
+	var err error
 	if isSandbox {
-		order, err := c.PostSandboxOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
+		order, err = c.PostSandboxOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
 		if err != nil {
-			return err
+			return order, err
 		}
 		status := order.ExecutionReportStatus
 		for status != investapi.OrderExecutionReportStatus_EXECUTION_REPORT_STATUS_FILL {
 			orderState, err := c.GetSandboxOrderState(accountId, order.OrderId)
 			if err != nil {
-				return err
+				return order, err
 			}
 			status = orderState.ExecutionReportStatus
 		}
 	} else {
-		order, err := c.PostOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
+		order, err = c.PostOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
 		if err != nil {
-			return err
+			return order, err
 		}
 		status := order.ExecutionReportStatus
 		for status != investapi.OrderExecutionReportStatus_EXECUTION_REPORT_STATUS_FILL {
 			orderState, err := c.GetOrderState(accountId, order.OrderId)
 			if err != nil {
-				return err
+				return order, err
 			}
 			status = orderState.ExecutionReportStatus
 		}
 	}
-	return nil
+	return order, err
 }
