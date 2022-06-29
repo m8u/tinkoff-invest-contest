@@ -79,23 +79,15 @@ func (e *TradeEnv) CalculateLotsCanAfford(direction investapi.OrderDirection, ma
 	return lots
 }
 
-func (e *TradeEnv) GetLotsHave(accountId string, instrument utils.InstrumentInterface) (int64, error) { // ???TODO: with expectation that it can return negative quantity
-	var positions *investapi.PositionsResponse
-	var err error
-	if e.isSandbox {
-		positions, err = e.Client.GetSandboxPositions(accountId)
-	} else {
-		positions, err = e.Client.GetPositions(accountId)
-	}
+func (e *TradeEnv) GetLotsHave(accountId string, instrument utils.InstrumentInterface) (lots int64, err error) { // ???TODO: with expectation that it can return negative quantity for short position
+	portfolio, err := e.Client.WrapGetPortfolio(e.isSandbox, accountId)
 	if err != nil {
 		return 0, err
 	}
-
-	var lotsHave int64
-	if len(positions.Securities) > 0 { // TODO: search by figi and also search currencies and futures too
-		lotsHave = positions.Securities[0].Balance / int64(instrument.GetLot())
-	} else {
-		lotsHave = 0
+	for _, position := range portfolio.Positions {
+		if position.Figi == instrument.GetFigi() {
+			lots = int64(utils.FloatFromQuotation(position.QuantityLots))
+		}
 	}
-	return lotsHave, nil
+	return
 }

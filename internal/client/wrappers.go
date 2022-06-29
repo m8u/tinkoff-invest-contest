@@ -60,3 +60,17 @@ func (c *Client) WrapGetOrderState(isSandbox bool, accountId string, orderId str
 	}
 	return state, nil
 }
+
+func (c *Client) WrapGetPortfolio(isSandbox bool, accountId string) (*investapi.PortfolioResponse, error) {
+	var portfolio *investapi.PortfolioResponse
+	var err error
+	if isSandbox {
+		portfolio, err = c.GetSandboxPortfolio(accountId)
+	} else {
+		portfolio, err = c.GetPortfolio(accountId)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return portfolio, nil
+}

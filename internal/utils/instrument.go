@@ -8,6 +8,7 @@ type InstrumentInterface interface {
 	GetLot() int32
 	GetShortEnabledFlag() bool
 	GetCurrency() string
+	GetFigi() string
 }
 
 type InstrumentType int32

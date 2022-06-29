@@ -223,6 +223,20 @@ func (c *Client) GetOrderState(accountId string, orderId string) (*investapi.Ord
 	return orderState, nil
 }
 
+func (c *Client) GetPortfolio(accountId string) (*investapi.PortfolioResponse, error) {
+	utils.WaitForInternetConnection()
+	portfolioResp, err := c.OperationsService.GetPortfolio(
+		newContextWithBearerToken(c.token),
+		&investapi.PortfolioRequest{
+			AccountId: accountId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return portfolioResp, nil
+}
+
 func (c *Client) GetPositions(accountId string) (*investapi.PositionsResponse, error) {
 	utils.WaitForInternetConnection()
 	positionsResp, err := c.OperationsService.GetPositions(
@@ -262,6 +276,20 @@ func (c *Client) GetSandboxOrderState(accountId string, orderId string) (*invest
 		return nil, err
 	}
 	return orderState, nil
+}
+
+func (c *Client) GetSandboxPortfolio(accountId string) (*investapi.PortfolioResponse, error) {
+	utils.WaitForInternetConnection()
+	portfolioResp, err := c.SandboxService.GetSandboxPortfolio(
+		newContextWithBearerToken(c.token),
+		&investapi.PortfolioRequest{
+			AccountId: accountId,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return portfolioResp, nil
 }
 
 func (c *Client) GetSandboxPositions(accountId string) (*investapi.PositionsResponse, error) {
