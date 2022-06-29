@@ -1,8 +1,6 @@
 package client
 
 import (
-	"github.com/google/uuid"
-	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -28,39 +26,37 @@ func (c *Client) InstrumentByFigi(figi string, instrumentType utils.InstrumentTy
 	return instrument, nil
 }
 
-// WrapOrder posts either sandbox or real order with automatically generated orderId and waits for order to be filled
-func (c *Client) WrapOrder(isSandbox bool, figi string, quantity int64, price float64,
-	direction investapi.OrderDirection, accountId string, orderType investapi.OrderType) (*investapi.PostOrderResponse, error) {
+func (c *Client) WrapPostOrder(isSandbox bool, figi string, quantity int64, price float64,
+	direction investapi.OrderDirection, accountId string, orderType investapi.OrderType, orderId string) (*investapi.PostOrderResponse, error) {
 	var order *investapi.PostOrderResponse
 	var err error
-	if isSandbox { // TODO: make Client interface, create SandboxClient and CombatClient which will implement that interface
-		order, err = c.PostSandboxOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
+	if isSandbox {
+		order, err = c.PostSandboxOrder(figi, quantity, price, direction, accountId, orderType, orderId)
 		if err != nil {
 			return nil, err
-		}
-		status := order.ExecutionReportStatus
-		for status != investapi.OrderExecutionReportStatus_EXECUTION_REPORT_STATUS_FILL {
-			orderState, err := c.GetSandboxOrderState(accountId, order.OrderId)
-			if err != nil {
-				return order, err
-			}
-			status = orderState.ExecutionReportStatus
-			time.Sleep(time.Second)
 		}
 	} else {
-		order, err = c.PostOrder(figi, quantity, price, direction, accountId, orderType, uuid.New().String())
+		order, err = c.PostOrder(figi, quantity, price, direction, accountId, orderType, orderId)
 		if err != nil {
 			return nil, err
 		}
-		status := order.ExecutionReportStatus
-		for status != investapi.OrderExecutionReportStatus_EXECUTION_REPORT_STATUS_FILL {
-			orderState, err := c.GetOrderState(accountId, order.OrderId)
-			if err != nil {
-				return order, err
-			}
-			status = orderState.ExecutionReportStatus
-			time.Sleep(time.Second)
+	}
+	return order, nil
+}
+
+func (c *Client) WrapGetOrderState(isSandbox bool, accountId string, orderId string) (*investapi.OrderState, error) {
+	var state *investapi.OrderState
+	var err error
+	if isSandbox {
+		state, err = c.GetSandboxOrderState(accountId, orderId)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		state, err = c.GetOrderState(accountId, orderId)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return order, err
+	return state, nil
 }

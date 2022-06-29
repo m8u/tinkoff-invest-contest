@@ -33,7 +33,7 @@ func New(config config.Config) *TradeEnv {
 		for i := 0; i < config.NumAccounts; i++ {
 			accountResp, err := tradeEnv.Client.OpenSandboxAccount()
 			utils.MaybeCrash(err)
-			_, err = tradeEnv.Client.SandboxPayIn(accountResp.AccountId, "usd", config.Money) // TODO: allow to configure sandbox accounts through config file or using api endpoints
+			_, err = tradeEnv.Client.SandboxPayIn(accountResp.AccountId, "rub", config.Money) // TODO: allow to configure sandbox accounts through config file or using api endpoints
 			utils.MaybeCrash(err)
 			tradeEnv.accountsRegistry.accounts[accountResp.AccountId] = make(map[string]*moneyPosition)
 			tradeEnv.accountsRegistry.accounts[accountResp.AccountId]["rub"] = &moneyPosition{
