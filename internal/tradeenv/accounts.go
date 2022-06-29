@@ -1,6 +1,8 @@
 package tradeenv
 
-import "sync"
+import (
+	"sync"
+)
 
 type moneyPosition struct {
 	amount   float64
@@ -28,12 +30,14 @@ func (e *TradeEnv) GetUnoccupiedAccount(currency string) (accountId string, unlo
 		e.accountsRegistry.mu.Unlock()
 	}
 	e.accountsRegistry.mu.Lock()
-	for accountId, moneyPositions := range e.accountsRegistry.accounts {
-		if !(moneyPositions[currency].occupied) {
-			return accountId, unlock
+	var maxMoneyAmount float64
+	for id, moneyPositions := range e.accountsRegistry.accounts {
+		if !(moneyPositions[currency].occupied) && moneyPositions[currency].amount > maxMoneyAmount {
+			maxMoneyAmount = moneyPositions[currency].amount
+			accountId = id
 		}
 	}
-	return "", unlock
+	return
 }
 
 func (e *TradeEnv) SetAccountOccupied(accountId string, currency string) {
