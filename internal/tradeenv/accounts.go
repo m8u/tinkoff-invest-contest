@@ -2,6 +2,7 @@ package tradeenv
 
 import (
 	"sync"
+	"tinkoff-invest-contest/internal/utils"
 )
 
 type moneyPosition struct {
@@ -48,4 +49,36 @@ func (e *TradeEnv) SetAccountUnoccupied(accountId string, currency string) {
 	e.accountsRegistry.mu.Lock()
 	e.accountsRegistry.accounts[accountId][currency].occupied = false
 	e.accountsRegistry.mu.Unlock()
+}
+
+func (e *TradeEnv) CreateSandboxAccount(money map[string]float64) {
+	accountResp, err := e.Client.OpenSandboxAccount()
+	utils.MaybeCrash(err)
+	e.accountsRegistry.accounts[accountResp.AccountId] = make(map[string]*moneyPosition)
+	for currency, amount := range money {
+		if amount > 0 {
+			_, err = e.Client.SandboxPayIn(accountResp.AccountId, currency, amount)
+			utils.MaybeCrash(err)
+		}
+		e.accountsRegistry.accounts[accountResp.AccountId][currency] = &moneyPosition{
+			amount:   amount,
+			occupied: false,
+		}
+	}
+}
+
+func (e *TradeEnv) loadCombatAccounts() {
+	accounts, err := e.Client.GetAccounts()
+	utils.MaybeCrash(err)
+	for _, account := range accounts {
+		positions, err := e.Client.GetPositions(account.Id)
+		utils.MaybeCrash(err)
+		e.accountsRegistry.accounts[account.Id] = make(map[string]*moneyPosition)
+		for _, position := range positions.Money {
+			e.accountsRegistry.accounts[account.Id][position.Currency] = &moneyPosition{
+				amount:   utils.FloatFromMoneyValue(position),
+				occupied: false,
+			}
+		}
+	}
 }

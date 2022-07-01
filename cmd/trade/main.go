@@ -12,7 +12,6 @@ import (
 	"time"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/bots"
-	"tinkoff-invest-contest/internal/config"
 	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/strategies/tistrategy/bollinger"
@@ -30,9 +29,6 @@ func main() {
 	)
 	var figi = flag.String("figi", "BBG004730RP0",
 		"FIGI of a stock to bollinger_bot",
-	)
-	var startMoney = flag.Float64("start_money", 100000,
-		"(for --mode=sandbox) Starting money amount",
 	)
 	var fee = flag.Float64("fee", utils.Fees[utils.Premium],
 		"(for --mode=sandbox) Transaction fee (normalized, e.g. 0.00025 for 0.025%)",
@@ -82,14 +78,6 @@ func main() {
 
 	_ = godotenv.Load(".env")
 
-	tradeEnvConfig := config.Config{
-		IsSandbox:   true,
-		Token:       utils.GetSandboxToken(),
-		NumAccounts: 1,
-		Money:       *startMoney,
-		Fee:         *fee,
-	}
-
 	db.InitDB()
 	dashboard.InitGrafana()
 
@@ -102,13 +90,14 @@ func main() {
 		utils.WaitForInternetConnection()
 
 		log.Println("Creating sandbox trade environment...")
-		tradeEnv := tradeenv.New(tradeEnvConfig)
+		tradeEnv := tradeenv.New(utils.GetSandboxToken(), true)
 		bot := bots.New(
 			tradeEnv,
 			*figi,
 			utils.InstrumentType_INSTRUMENT_TYPE_SHARE,
 			utils.CandleIntervalsV1NamesToValues[*candleInterval],
 			*window,
+			*fee,
 			bollinger.New(*bollingerCoef, *maxPointDeviation),
 		)
 
@@ -118,13 +107,14 @@ func main() {
 		utils.WaitForInternetConnection()
 
 		log.Println("Creating combat trade environment...")
-		tradeEnv := tradeenv.New(tradeEnvConfig)
+		tradeEnv := tradeenv.New(utils.GetCombatToken(), true)
 		bot := bots.New(
 			tradeEnv,
 			*figi,
 			utils.InstrumentType_INSTRUMENT_TYPE_SHARE,
 			utils.CandleIntervalsV1NamesToValues[*candleInterval],
 			*window,
+			*fee,
 			bollinger.New(*bollingerCoef, *maxPointDeviation),
 		)
 
