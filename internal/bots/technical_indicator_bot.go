@@ -158,10 +158,10 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					bot.figi,
 					bot.occupiedAccountId,
 				)
-				_, err := bot.tradeEnv.DoOrder(
+				err := bot.tradeEnv.DoOrder(
 					bot.figi,
 					lots,
-					utils.FloatFromQuotation(currentCandle.Close),
+					currentCandle.Close,
 					signal.Direction,
 					bot.occupiedAccountId,
 					investapi.OrderType_ORDER_TYPE_MARKET,

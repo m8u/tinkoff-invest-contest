@@ -26,17 +26,17 @@ func (c *Client) InstrumentByFigi(figi string, instrumentType utils.InstrumentTy
 	return instrument, nil
 }
 
-func (c *Client) WrapPostOrder(isSandbox bool, figi string, quantity int64, price float64,
+func (c *Client) WrapPostOrder(isSandbox bool, figi string, quantity int64, price *investapi.Quotation,
 	direction investapi.OrderDirection, accountId string, orderType investapi.OrderType, orderId string) (*investapi.PostOrderResponse, error) {
 	var order *investapi.PostOrderResponse
 	var err error
 	if isSandbox {
-		order, err = c.PostSandboxOrder(figi, quantity, price, direction, accountId, orderType, orderId)
+		order, err = c.PostSandboxOrder(figi, quantity, utils.FloatFromQuotation(price), direction, accountId, orderType, orderId)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		order, err = c.PostOrder(figi, quantity, price, direction, accountId, orderType, orderId)
+		order, err = c.PostOrder(figi, quantity, utils.FloatFromQuotation(price), direction, accountId, orderType, orderId)
 		if err != nil {
 			return nil, err
 		}
@@ -73,4 +73,18 @@ func (c *Client) WrapGetPortfolio(isSandbox bool, accountId string) (*investapi.
 		return nil, err
 	}
 	return portfolio, nil
+}
+
+func (c *Client) WrapGetPositions(isSandbox bool, accountId string) (*investapi.PositionsResponse, error) {
+	var positions *investapi.PositionsResponse
+	var err error
+	if isSandbox {
+		positions, err = c.GetSandboxPositions(accountId)
+	} else {
+		positions, err = c.GetPositions(accountId)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return positions, nil
 }

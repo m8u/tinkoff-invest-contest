@@ -46,7 +46,12 @@ func (e *TradeEnv) SetAccountOccupied(accountId string, currency string) {
 }
 
 func (e *TradeEnv) SetAccountUnoccupied(accountId string, currency string) {
+	positions, err := e.Client.WrapGetPositions(e.isSandbox, accountId)
+	utils.MaybeCrash(err)
 	e.accountsRegistry.mu.Lock()
+	for _, moneyPosition := range positions.Money {
+		e.accountsRegistry.accounts[accountId][moneyPosition.Currency].amount = utils.FloatFromMoneyValue(moneyPosition)
+	}
 	e.accountsRegistry.accounts[accountId][currency].occupied = false
 	e.accountsRegistry.mu.Unlock()
 }

@@ -8,12 +8,12 @@ import (
 )
 
 func TestTradeEnv_GetCandlesFor1NthDayBeforeNow(t *testing.T) {
+	e := New(utils.GetSandboxToken(), true)
 	type args struct {
 		figi           string
 		candleInterval investapi.CandleInterval
 		n              int
 	}
-	e := New(utils.GetSandboxToken(), true)
 	tests := []struct {
 		name    string
 		args    args
@@ -30,6 +30,16 @@ func TestTradeEnv_GetCandlesFor1NthDayBeforeNow(t *testing.T) {
 			want:    time.Now().UTC().Add(-5 * 24 * time.Hour),
 			wantErr: false,
 		},
+		{
+			name: "test2",
+			args: args{
+				figi:           "BBG006L8G4H1",
+				candleInterval: investapi.CandleInterval_CANDLE_INTERVAL_5_MIN,
+				n:              100,
+			},
+			want:    time.Now().UTC().Add(-100 * 24 * time.Hour),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -39,8 +49,9 @@ func TestTradeEnv_GetCandlesFor1NthDayBeforeNow(t *testing.T) {
 				return
 			}
 			for _, candle := range got {
-				if candle.Time.AsTime().YearDay() != tt.want.YearDay() {
-					t.Errorf("GetCandlesFor1NthDayBeforeNow() got = %v, want %v", candle.Time.AsTime().YearDay(), tt.want.YearDay())
+				gotYearDay, wantYearDay := candle.Time.AsTime().YearDay(), tt.want.YearDay()
+				if !(gotYearDay >= wantYearDay-1 && gotYearDay <= wantYearDay) {
+					t.Errorf("GetCandlesFor1NthDayBeforeNow() got = %v, want [%v; %v]", gotYearDay, wantYearDay-1, wantYearDay)
 					t.FailNow()
 				}
 			}
@@ -49,12 +60,12 @@ func TestTradeEnv_GetCandlesFor1NthDayBeforeNow(t *testing.T) {
 }
 
 func TestTradeEnv_GetAtLeastNLastCandles(t *testing.T) {
+	e := New(utils.GetSandboxToken(), true)
 	type args struct {
 		figi           string
 		candleInterval investapi.CandleInterval
 		n              int
 	}
-	e := New(utils.GetSandboxToken(), true)
 	tests := []struct {
 		name    string
 		args    args
