@@ -18,7 +18,6 @@ type TechnicalIndicatorBot struct {
 	instrumentType utils.InstrumentType
 	candleInterval investapi.CandleInterval
 	window         int
-	fee            float64
 	allowMargin    bool
 
 	tradeEnv          *tradeenv.TradeEnv
@@ -27,17 +26,17 @@ type TechnicalIndicatorBot struct {
 	strategy tistrategy.TechnicalIndicatorStrategy
 }
 
-func New(tradeEnv *tradeenv.TradeEnv, figi string, instrumentType utils.InstrumentType,
-	candleInterval investapi.CandleInterval, window int, fee float64, strategy tistrategy.TechnicalIndicatorStrategy) *TechnicalIndicatorBot {
-	bot := new(TechnicalIndicatorBot)
-
-	bot.figi = figi
-	bot.instrumentType = instrumentType
-	bot.candleInterval = candleInterval
-	bot.window = window
-	bot.strategy = strategy
-
-	bot.tradeEnv = tradeEnv
+func NewTechnicalIndicatorBot(tradeEnv *tradeenv.TradeEnv, figi string, instrumentType utils.InstrumentType,
+	candleInterval investapi.CandleInterval, window int, allowMargin bool, strategy tistrategy.TechnicalIndicatorStrategy) *TechnicalIndicatorBot {
+	bot := &TechnicalIndicatorBot{
+		figi:           figi,
+		instrumentType: instrumentType,
+		candleInterval: candleInterval,
+		window:         window,
+		allowMargin:    allowMargin,
+		tradeEnv:       tradeEnv,
+		strategy:       strategy,
+	}
 
 	bot.tradeEnv.InitChannels(bot.figi)
 
@@ -130,7 +129,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 						unlock()
 						return err
 					}
-					lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Direction, maxDealValue, instrument, currentCandle.Close, bot.fee)
+					lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Direction, maxDealValue, instrument, currentCandle.Close)
 					if lots == 0 {
 						unlock()
 						continue

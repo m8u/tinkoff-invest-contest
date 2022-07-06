@@ -1,6 +1,7 @@
 package bollinger
 
 import (
+	"encoding/json"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/strategies/tistrategy"
 	indicators "tinkoff-invest-contest/internal/technical_indicators"
@@ -12,11 +13,21 @@ type strategy struct {
 	pointDeviation float64
 }
 
-func New(bollingerCoef float64, pointDeviation float64) *strategy {
-	return &strategy{
-		indicator:      indicators.NewBollingerBands(bollingerCoef),
-		pointDeviation: pointDeviation,
+func NewFromJsonString(s string) (tistrategy.TechnicalIndicatorStrategy, error) {
+	params := struct {
+		Coef           float64 `json:"coef"`
+		PointDeviation float64 `json:"pointDev"`
+	}{}
+
+	err := json.Unmarshal([]byte(s), &params)
+	if err != nil {
+		return nil, err
 	}
+
+	return &strategy{
+		indicator:      indicators.NewBollingerBands(params.Coef),
+		pointDeviation: params.PointDeviation,
+	}, nil
 }
 
 func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*utils.TradeSignal, map[string]any) {

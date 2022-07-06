@@ -71,29 +71,6 @@ func GetGrafanaToken() string {
 	return token
 }
 
-var CandleIntervalsV1NamesToValues = map[string]investapi.CandleInterval{
-	"1min":  investapi.CandleInterval_CANDLE_INTERVAL_1_MIN,
-	"5min":  investapi.CandleInterval_CANDLE_INTERVAL_5_MIN,
-	"15min": investapi.CandleInterval_CANDLE_INTERVAL_15_MIN,
-	"hour":  investapi.CandleInterval_CANDLE_INTERVAL_HOUR,
-	"day":   investapi.CandleInterval_CANDLE_INTERVAL_DAY,
-}
-var CandleIntervalsValuesToV1Names = map[investapi.CandleInterval]string{
-	investapi.CandleInterval_CANDLE_INTERVAL_1_MIN:  "1min",
-	investapi.CandleInterval_CANDLE_INTERVAL_5_MIN:  "5min",
-	investapi.CandleInterval_CANDLE_INTERVAL_15_MIN: "15min",
-	investapi.CandleInterval_CANDLE_INTERVAL_HOUR:   "hour",
-	investapi.CandleInterval_CANDLE_INTERVAL_DAY:    "day",
-}
-
-var CandleIntervalsToDurations = map[investapi.CandleInterval]time.Duration{
-	investapi.CandleInterval_CANDLE_INTERVAL_1_MIN:  time.Minute,
-	investapi.CandleInterval_CANDLE_INTERVAL_5_MIN:  5 * time.Minute,
-	investapi.CandleInterval_CANDLE_INTERVAL_15_MIN: 15 * time.Minute,
-	investapi.CandleInterval_CANDLE_INTERVAL_HOUR:   time.Hour,
-	investapi.CandleInterval_CANDLE_INTERVAL_DAY:    24 * time.Hour,
-}
-
 type TradeSignal struct {
 	Direction investapi.OrderDirection
 }

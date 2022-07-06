@@ -63,15 +63,15 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 }
 
 func (e *TradeEnv) CalculateLotsCanAfford(direction investapi.OrderDirection, maxDealValue float64,
-	instrument utils.InstrumentInterface, price *investapi.Quotation, fee float64) int64 {
+	instrument utils.InstrumentInterface, price *investapi.Quotation) int64 {
 
 	priceFeeIncluded := utils.FloatFromQuotation(price)
 	switch direction {
 	case investapi.OrderDirection_ORDER_DIRECTION_BUY:
-		priceFeeIncluded *= 1 + fee
+		priceFeeIncluded *= 1 + e.fee
 		break
 	case investapi.OrderDirection_ORDER_DIRECTION_SELL:
-		priceFeeIncluded *= 1 - fee
+		priceFeeIncluded *= 1 - e.fee
 		break
 	}
 
