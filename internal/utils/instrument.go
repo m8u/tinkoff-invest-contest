@@ -12,6 +12,7 @@ type InstrumentInterface interface {
 	GetShortEnabledFlag() bool
 	GetCurrency() string
 	GetFigi() string
+	GetTicker() string
 }
 
 type InstrumentType int32

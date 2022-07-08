@@ -125,7 +125,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": false,
-          "rawSql": "SELECT \"time\" AS \"time\",\n  open, high, low, close, volume FROM <figi>_candles WHERE $__timeFilter(\"time\") ORDER BY 1",
+          "rawSql": "SELECT \"time\" AS \"time\",\n  open, high, low, close, volume FROM bot_<bot_id>_candles WHERE $__timeFilter(\"time\") ORDER BY 1",
           "refId": "candles",
           "select": [
             [
@@ -137,7 +137,7 @@
               }
             ]
           ],
-          "table": "<figi>_candles",
+          "table": "bot_<bot_id>_candles",
           "timeColumn": "\"time\"",
           "timeColumnType": "timestamp",
           "where": [
@@ -158,7 +158,7 @@
           "hide": false,
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "SELECT\n  *\nFROM <figi>_indicators\nWHERE\n  $__timeFilter(\"time\")\nORDER BY 1",
+          "rawSql": "SELECT\n  *\nFROM bot_<bot_id>_indicators\nWHERE\n  $__timeFilter(\"time\")\nORDER BY 1",
           "refId": "indicators",
           "select": [
             [
@@ -170,7 +170,7 @@
               }
             ]
           ],
-          "table": "<figi>_indicators",
+          "table": "bot_<bot_id>_indicators",
           "timeColumn": "\"time\"",
           "timeColumnType": "timestamptz",
           "where": [
@@ -185,6 +185,44 @@
       "timeShift": "0h+15m",
       "title": "Candle chart",
       "type": "candlestick"
+    },
+    {
+      "datasource": {
+        "type": "dashboard",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 17,
+        "y": 0
+      },
+      "header_js": "{}",
+      "id": 3,
+      "method": "iframe",
+      "mode": "html",
+      "params_js": "{\n}",
+      "request": "http",
+      "responseType": "text",
+      "showErrors": false,
+      "showTime": false,
+      "showTimeFormat": "LTS",
+      "showTimeValue": "request",
+      "skipSameURL": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A"
+        }
+      ],
+      "templateResponse": true,
+      "transparent": true,
+      "type": "ryantxu-ajax-panel",
+      "url": "http://localhost:8080/botcontrols?id=<bot_id>",
+      "withCredentials": false
     }
   ],
   "refresh": "1s",
@@ -214,7 +252,7 @@
     ]
   },
   "timezone": "",
-  "title": "bot_<figi>",
+  "title": "<bot_name>",
   "version": 9,
   "weekStart": ""
 }

@@ -13,6 +13,7 @@ import (
 	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/strategies"
+	"tinkoff-invest-contest/internal/uihandlers"
 )
 
 func handleExit() {
@@ -22,9 +23,15 @@ func handleExit() {
 	<-ch
 	signal.Stop(ch)
 	log.Println("Exiting...")
+	// Run remove sequences for bots
+	for _, bot := range app.Bots {
+		bot.Remove()
+	}
 	// Trigger exit actions
 	appstate.ShouldExit = true
 	appstate.ExitActionsWG.Done()
+	// Remove Grafana dashboards
+	dashboard.RemoveBotDashboards()
 	// Wait for all to complete before exiting
 	appstate.PostExitActionsWG.Wait()
 }
@@ -32,7 +39,15 @@ func handleExit() {
 func runServer() {
 	router := gin.Default()
 
-	router.POST("/CreateBot", api.CreateBot)
+	router.LoadHTMLFiles("./web/templates/bot_controls.html")
+
+	router.POST("/api/bots/Create", api.CreateBot)
+	router.GET("/api/bots/Create", api.CreateBot)
+	router.POST("/api/bots/Start", api.StartBot)
+	router.POST("/api/bots/TogglePause", api.TogglePauseBot)
+	router.POST("/api/bots/Remove", api.RemoveBot)
+
+	router.GET("/botcontrols", uihandlers.BotControls)
 
 	log.Fatalln(router.Run())
 }

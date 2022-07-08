@@ -20,13 +20,20 @@ type TechnicalIndicatorBot struct {
 	window         int
 	allowMargin    bool
 
+	id   string
+	name string
+
 	tradeEnv          *tradeenv.TradeEnv
 	occupiedAccountId string
 
 	strategy tistrategy.TechnicalIndicatorStrategy
+
+	started  bool
+	paused   bool
+	removing bool
 }
 
-func NewTechnicalIndicatorBot(tradeEnv *tradeenv.TradeEnv, figi string, instrumentType utils.InstrumentType,
+func NewTechnicalIndicatorBot(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string, instrumentType utils.InstrumentType,
 	candleInterval investapi.CandleInterval, window int, allowMargin bool, strategy tistrategy.TechnicalIndicatorStrategy) *TechnicalIndicatorBot {
 	bot := &TechnicalIndicatorBot{
 		figi:           figi,
@@ -34,21 +41,21 @@ func NewTechnicalIndicatorBot(tradeEnv *tradeenv.TradeEnv, figi string, instrume
 		candleInterval: candleInterval,
 		window:         window,
 		allowMargin:    allowMargin,
+		id:             id,
+		name:           name,
 		tradeEnv:       tradeEnv,
 		strategy:       strategy,
 	}
 
 	bot.tradeEnv.InitChannels(bot.figi)
 
-	err := db.CreateCandlesTable(bot.figi)
+	err := db.CreateCandlesTable(bot.id)
 	utils.MaybeCrash(err)
 
-	db.CreateIndicatorValuesTable(bot.figi, strategy.GetDescriptor())
+	db.CreateIndicatorValuesTable(bot.id, strategy.GetDescriptor())
 
-	err = dashboard.AddBotDashboard(bot.figi)
+	err = dashboard.AddBotDashboard(bot.id, bot.name)
 	utils.MaybeCrash(err)
-
-	appstate.PostExitActionsWG.Add(1)
 
 	return bot
 }
@@ -67,7 +74,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 		return err
 	}
 
-	for !appstate.ShouldExit {
+	for !appstate.ShouldExit && !bot.removing {
 		select {
 		// Get candle from stream
 		case currentCandle := <-bot.tradeEnv.Channels[bot.figi].Candle:
@@ -81,12 +88,12 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				// Trim excessive candles
 				candles = candles[len(candles)-(bot.window-1):]
 				go func() {
-					db.InsertCandles(bot.figi, candles)
+					db.InsertCandles(bot.id, candles)
 				}()
 				currentTimestamp = currentCandle.Time.AsTime()
 			}
 			go func() {
-				db.UpdateLastCandle(bot.figi, currentCandle)
+				db.UpdateLastCandle(bot.id, currentCandle)
 			}()
 
 			// Get trade signal
@@ -103,7 +110,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 			)
 			indicatorValues["time"] = currentCandle.Time.AsTime()
 			go func() {
-				db.AddIndicatorValues(bot.figi, indicatorValues)
+				db.AddIndicatorValues(bot.id, indicatorValues)
 			}()
 
 			if signal != nil {
@@ -179,38 +186,51 @@ func (bot *TechnicalIndicatorBot) loop() error {
 			}
 
 		default:
-			// Don't block
+			// Don't block, unless
+			for bot.paused && !bot.removing {
+			}
 		}
 	}
 	return nil
 }
 
 func (bot *TechnicalIndicatorBot) Serve() {
-	go func() {
-		appstate.ExitActionsWG.Wait()
-		bot.exitActions()
-	}()
+	bot.started = true
+	for !appstate.ShouldExit && !bot.removing {
+		log.Printf("bot %q is starting...", bot.name)
 
-	for !appstate.ShouldExit {
 		utils.WaitForInternetConnection()
 
 		err := bot.tradeEnv.Client.SubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 		utils.MaybeCrash(err)
 
-		log.Printf("bot#%v is starting...", bot.figi)
 		err = bot.loop()
 		if err != nil {
-			log.Printf("bot#%v has crashed, restarting...", bot.figi) // TODO: implement bot ids
+			log.Printf("bot %q has crashed, restarting...", bot.name)
 			time.Sleep(10 * time.Second)
 		}
 	}
 }
 
-func (bot *TechnicalIndicatorBot) exitActions() {
-	defer appstate.PostExitActionsWG.Done()
+func (bot *TechnicalIndicatorBot) TogglePause() {
+	bot.paused = !bot.paused
+}
+
+func (bot *TechnicalIndicatorBot) Remove() {
+	bot.removing = true
+
+	// TODO: remove all bot data from db
 
 	err := bot.tradeEnv.Client.UnsubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 	if err != nil {
 		log.Println(utils.PrettifyError(err))
 	}
+}
+
+func (bot *TechnicalIndicatorBot) IsPaused() bool {
+	return bot.paused
+}
+
+func (bot *TechnicalIndicatorBot) IsStarted() bool {
+	return bot.started
 }

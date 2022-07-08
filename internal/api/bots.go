@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"tinkoff-invest-contest/internal/app"
 	"tinkoff-invest-contest/internal/bots"
 	"tinkoff-invest-contest/internal/strategies/tistrategy"
@@ -13,6 +14,7 @@ import (
 
 var botId int64
 
+// http://localhost:8080/api/bots/Create?sandbox=1&figi=BBG006L8G4H1&instrumentType=share&allowMargin=0&window=60&candleInterval=1min&strategy={"name":"bollinger","coef":3,"pointDev":0.001}
 func CreateBot(c *gin.Context) {
 	args := struct {
 		Sandbox        bool   `form:"sandbox"`
@@ -72,10 +74,39 @@ func CreateBot(c *gin.Context) {
 		}
 		id := fmt.Sprint(botId)
 		botId++
-		app.Bots[id] = bots.NewTechnicalIndicatorBot(tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.AllowMargin, strategy)
+		instrument, err := tradeEnv.Client.InstrumentByFigi(args.Figi, instrumentType)
+		name := instrument.GetTicker()
+		if args.Sandbox {
+			name = "[sandbox] " + name
+		}
+		name += " #" + id
+
+		app.Bots[id] = bots.NewTechnicalIndicatorBot(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.AllowMargin, strategy)
 	} // else if newStrategyFromJson, ok := obstrategy.JsonConstructors[strategyParams.Name]; ok {
 
 	//}
+
+	c.Status(http.StatusOK)
+}
+
+func StartBot(c *gin.Context) {
+	id := c.Query("id")
+	go app.Bots[id].Serve()
+
+	c.Writer.WriteString("ok")
+}
+
+func TogglePauseBot(c *gin.Context) {
+	id := c.Query("id")
+	app.Bots[id].TogglePause()
+
+	c.Writer.WriteString("ok")
+}
+
+func RemoveBot(c *gin.Context) {
+	id := c.Query("id")
+	app.Bots[id].Remove()
+	delete(app.Bots, id)
 
 	c.Writer.WriteString("ok")
 }

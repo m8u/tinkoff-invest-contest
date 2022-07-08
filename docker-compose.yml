@@ -16,7 +16,7 @@ services:
       - GF_DATABASE_SSL_MODE=disable
       - GF_LOG_LEVEL=warn
       - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
-      - GF_INSTALL_PLUGINS=https://github.com/ryantxu/ajax-panel/releases/download/v0.0.6/ryantxu-ajax-panel-0.0.6.zip;ryantxu-ajax-panel
+      - GF_INSTALL_PLUGINS=https://grafana.com/api/plugins/ryantxu-ajax-panel/versions/0.1.0/download;ryantxu-ajax-panel
       - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=ryantxu-ajax-panel
     depends_on:
       - db

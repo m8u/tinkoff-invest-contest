@@ -35,17 +35,17 @@ func ensureDBInitialized() {
 	}
 }
 
-func CreateCandlesTable(figi string) error {
+func CreateCandlesTable(botId string) error {
 	ensureDBInitialized()
 	_, err := db.Exec(
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %v_candles (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS bot_%v_candles (
 			open DOUBLE PRECISION,
 			high DOUBLE PRECISION,
 			low DOUBLE PRECISION,
 			close DOUBLE PRECISION,
 			volume BIGINT,
 			time TIMESTAMP WITH TIME ZONE UNIQUE)`,
-			figi,
+			botId,
 		),
 	)
 	if err != nil {
@@ -54,9 +54,9 @@ func CreateCandlesTable(figi string) error {
 	return nil
 }
 
-func CreateIndicatorValuesTable(figi string, descriptor []string) {
+func CreateIndicatorValuesTable(botId string, descriptor []string) {
 	ensureDBInitialized()
-	sqlStr := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %v_indicators (", figi)
+	sqlStr := fmt.Sprintf("CREATE TABLE IF NOT EXISTS bot_%v_indicators (", botId)
 	for _, name := range descriptor {
 		sqlStr += name + " DOUBLE PRECISION, "
 	}
@@ -65,11 +65,11 @@ func CreateIndicatorValuesTable(figi string, descriptor []string) {
 	utils.MaybeCrash(err)
 }
 
-func AddIndicatorValues(figi string, indicatorValues map[string]any) {
+func AddIndicatorValues(botId string, indicatorValues map[string]any) {
 	ensureDBInitialized()
 	keys := make([]string, 0)
 	values := make([]any, 0)
-	sqlStr := fmt.Sprintf("INSERT INTO %v_indicators(", figi)
+	sqlStr := fmt.Sprintf("INSERT INTO bot_%v_indicators(", botId)
 	for k, v := range indicatorValues {
 		keys = append(keys, k)
 		values = append(values, v)
@@ -89,23 +89,23 @@ func AddIndicatorValues(figi string, indicatorValues map[string]any) {
 	utils.MaybeCrash(err)
 }
 
-func InsertCandles(figi string, candles []*investapi.HistoricCandle) {
+func InsertCandles(botId string, candles []*investapi.HistoricCandle) {
 	ensureDBInitialized()
-	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO %v_candles(open, high, low, close, volume, time)
+	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO bot_%v_candles(open, high, low, close, volume, time)
 		VALUES (:open, :high, :low, :close, :volume, :time)
 		ON CONFLICT (time) DO UPDATE
 		SET open=excluded.open, high=excluded.high, low=excluded.low, close=excluded.close, volume=excluded.volume`,
-		figi), sqlizeHistoricCandles(candles))
+		botId), sqlizeHistoricCandles(candles))
 	utils.MaybeCrash(err)
 }
 
-func UpdateLastCandle(figi string, candle *investapi.Candle) {
+func UpdateLastCandle(botId string, candle *investapi.Candle) {
 	ensureDBInitialized()
-	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO %v_candles(open, high, low, close, volume, time)
+	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO bot_%v_candles(open, high, low, close, volume, time)
 		VALUES (:open, :high, :low, :close, :volume, :time)
 		ON CONFLICT (time) DO UPDATE
 		SET open=excluded.open, high=excluded.high, low=excluded.low, close=excluded.close, volume=excluded.volume`,
-		figi), sqlizeCandle(candle))
+		botId), sqlizeCandle(candle))
 	utils.MaybeCrash(err)
 }
 

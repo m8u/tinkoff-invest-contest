@@ -11,6 +11,7 @@ import (
 )
 
 var client *grafana.Client
+var botsFolder grafana.Folder
 var botDashboardTemplate []byte
 
 func InitGrafana() {
@@ -59,6 +60,12 @@ func InitGrafana() {
 		client = nil
 	}
 
+	botsFolder, err = client.NewFolder("Bots")
+	if err != nil {
+		log.Printf("can't create Grafana folder: %v", err)
+		client = nil
+	}
+
 	botDashboardTemplate, err = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
 	if err != nil {
 		log.Fatalf("can't read template file: %v", err)
@@ -73,16 +80,18 @@ func IsGrafanaInitialized() bool {
 	return true
 }
 
-func AddBotDashboard(figi string) error {
+func AddBotDashboard(botId string, botName string) error {
 	if !IsGrafanaInitialized() {
 		return nil
 	}
 	modelStr := string(botDashboardTemplate)
-	modelStr = strings.ReplaceAll(modelStr, "<figi>", strings.ToLower(figi))
+	modelStr = strings.ReplaceAll(modelStr, "<bot_id>", strings.ToLower(botId))
+	modelStr = strings.ReplaceAll(modelStr, "<bot_name>", strings.ToLower(botName))
 	var model map[string]any
 	_ = json.Unmarshal([]byte(modelStr), &model)
 	dashboard := grafana.Dashboard{
 		Model:     model,
+		Folder:    botsFolder.ID,
 		Overwrite: true,
 	}
 	_, err := client.NewDashboard(dashboard)
@@ -90,4 +99,12 @@ func AddBotDashboard(figi string) error {
 		return err
 	}
 	return nil
+}
+
+func RemoveBotDashboards() {
+	err := client.DeleteFolder(botsFolder.UID)
+	if err != nil {
+		log.Printf("can't delete Grafana folder: %v", err)
+		client = nil
+	}
 }
