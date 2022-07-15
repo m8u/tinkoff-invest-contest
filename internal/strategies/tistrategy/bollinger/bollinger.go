@@ -13,21 +13,33 @@ type strategy struct {
 	pointDeviation float64
 }
 
-func NewFromJsonString(s string) (tistrategy.TechnicalIndicatorStrategy, error) {
-	params := struct {
-		Coef           float64 `json:"coef"`
-		PointDeviation float64 `json:"pointDev"`
-	}{}
+type params struct {
+	Coef           float64 `json:"coef"`
+	PointDeviation float64 `json:"pointDev"`
+}
 
-	err := json.Unmarshal([]byte(s), &params)
+func NewFromJSON(s string) (tistrategy.TechnicalIndicatorStrategy, error) {
+	p := params{}
+
+	err := json.Unmarshal([]byte(s), &p)
 	if err != nil {
 		return nil, err
 	}
 
 	return &strategy{
-		indicator:      indicators.NewBollingerBands(params.Coef),
-		pointDeviation: params.PointDeviation,
+		indicator:      indicators.NewBollingerBands(p.Coef),
+		pointDeviation: p.PointDeviation,
 	}, nil
+}
+
+func GetDefaultsJSON() string {
+	defaults := params{
+		Coef:           3,
+		PointDeviation: 0.001,
+	}
+	bytes, err := json.MarshalIndent(&defaults, "", "  ")
+	utils.MaybeCrash(err)
+	return string(bytes)
 }
 
 func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*utils.TradeSignal, map[string]any) {
@@ -51,7 +63,7 @@ func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*
 	return signal, indicatorValues
 }
 
-func (strategy *strategy) GetDescriptor() []string {
+func (strategy *strategy) GetOutputKeys() []string {
 	return []string{
 		"bollinger_lower_bound",
 		"bollinger_upper_bound",

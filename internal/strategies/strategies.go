@@ -5,8 +5,15 @@ import (
 	"tinkoff-invest-contest/internal/strategies/tistrategy/bollinger"
 )
 
-func InitConstructorsMap() {
-	tistrategy.JsonConstructors = map[string]func(string) (tistrategy.TechnicalIndicatorStrategy, error){
-		"bollinger": bollinger.NewFromJsonString,
+var Names = [...]string{
+	"bollinger",
+}
+
+func init() {
+	tistrategy.JSONConstructors = map[string]func(string) (tistrategy.TechnicalIndicatorStrategy, error){
+		"bollinger": bollinger.NewFromJSON,
+	}
+	tistrategy.DefaultsJSON = map[string]func() string{
+		"bollinger": bollinger.GetDefaultsJSON,
 	}
 }

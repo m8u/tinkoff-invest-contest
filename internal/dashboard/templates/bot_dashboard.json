@@ -221,7 +221,7 @@
       "templateResponse": true,
       "transparent": true,
       "type": "ryantxu-ajax-panel",
-      "url": "http://localhost:8080/botcontrols?id=<bot_id>",
+      "url": "http://<host>:<port>/botcontrols?id=<bot_id>",
       "withCredentials": false
     }
   ],

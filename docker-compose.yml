@@ -30,6 +30,9 @@ services:
     build:
       context: .
       dockerfile: build/trade/Dockerfile
+    environment:
+      - HOST=localhost
+      - PORT=3001
     env_file:
       - .env
     depends_on:
@@ -40,4 +43,4 @@ services:
       - db
       - grafana
     ports:
-      - "8080:8080"
+      - "3001:3001"

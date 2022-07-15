@@ -11,6 +11,6 @@ var (
 	Bots       map[string]bots.Bot
 )
 
-func Init() {
+func init() {
 	Bots = make(map[string]bots.Bot)
 }

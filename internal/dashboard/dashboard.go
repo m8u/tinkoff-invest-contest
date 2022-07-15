@@ -11,10 +11,13 @@ import (
 )
 
 var client *grafana.Client
+
 var botsFolder grafana.Folder
+var utilitiesFolder grafana.Folder
+
 var botDashboardTemplate []byte
 
-func InitGrafana() {
+func init() {
 	var err error
 	client, err = grafana.New("http://grafana:3000", grafana.Config{
 		APIKey:     utils.GetGrafanaToken(),
@@ -27,17 +30,16 @@ func InitGrafana() {
 	dataSources, err := client.DataSources()
 	if err != nil {
 		log.Printf("can't get Grafana datasources: %v", err)
+		client = nil // TODO: try again after some time if not initialized (when trade service starts before grafana)
+		return
 	}
 	for _, dataSource := range dataSources {
 		if dataSource.Name == "PostgreSQL" {
-			err := client.DeleteDataSource(dataSource.ID)
-			if err != nil {
-				log.Printf("can't delete Grafana datasource: %v", err)
-			}
+			_ = client.DeleteDataSource(dataSource.ID)
 		}
 	}
 
-	_, err = client.NewDataSource(&grafana.DataSource{
+	_, _ = client.NewDataSource(&grafana.DataSource{
 		Name:      "PostgreSQL",
 		UID:       "PostgreSQL",
 		Type:      "postgres",
@@ -55,21 +57,33 @@ func InitGrafana() {
 			Password: db.Password,
 		},
 	})
-	if err != nil {
-		log.Printf("can't add Grafana datasource: %v", err)
-		client = nil
-	}
 
-	botsFolder, err = client.NewFolder("Bots")
-	if err != nil {
-		log.Printf("can't create Grafana folder: %v", err)
-		client = nil
+	folders, _ := client.Folders()
+	for _, folder := range folders {
+		_ = client.DeleteFolder(folder.UID)
 	}
+	botsFolder, _ = client.NewFolder("Bots")
+	utilitiesFolder, _ = client.NewFolder("Utilities")
 
-	botDashboardTemplate, err = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
-	if err != nil {
-		log.Fatalf("can't read template file: %v", err)
+	_ = addUtilityDashboard("internal/dashboard/templates/create_bot_dashboard.json", utilitiesFolder.ID)
+
+	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
+}
+
+func addUtilityDashboard(templatePath string, folderID int64) error {
+	template, _ := os.ReadFile(templatePath)
+	modelStr := string(template)
+	modelStr = strings.ReplaceAll(modelStr, "<host>", os.Getenv("HOST"))
+	modelStr = strings.ReplaceAll(modelStr, "<port>", os.Getenv("PORT"))
+	var model map[string]any
+	_ = json.Unmarshal([]byte(modelStr), &model)
+	dashboard := grafana.Dashboard{
+		Model:     model,
+		Folder:    folderID,
+		Overwrite: true,
 	}
+	_, err := client.NewDashboard(dashboard)
+	return err
 }
 
 func IsGrafanaInitialized() bool {
@@ -87,6 +101,8 @@ func AddBotDashboard(botId string, botName string) error {
 	modelStr := string(botDashboardTemplate)
 	modelStr = strings.ReplaceAll(modelStr, "<bot_id>", strings.ToLower(botId))
 	modelStr = strings.ReplaceAll(modelStr, "<bot_name>", strings.ToLower(botName))
+	modelStr = strings.ReplaceAll(modelStr, "<host>", os.Getenv("HOST"))
+	modelStr = strings.ReplaceAll(modelStr, "<port>", os.Getenv("PORT"))
 	var model map[string]any
 	_ = json.Unmarshal([]byte(modelStr), &model)
 	dashboard := grafana.Dashboard{

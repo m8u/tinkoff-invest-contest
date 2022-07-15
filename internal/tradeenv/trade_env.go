@@ -10,7 +10,7 @@ import (
 type TradeEnv struct {
 	token     string
 	isSandbox bool
-	fee       float64
+	CombatFee float64
 
 	accountsRegistry *accountsRegistry
 
@@ -18,12 +18,12 @@ type TradeEnv struct {
 	Channels map[string]MarketDataChannelStack
 }
 
-// New creates a new TradeEnv. If isSandbox = false, fee is ignored
-func New(token string, isSandbox bool, fee float64) *TradeEnv {
+// New creates a new TradeEnv. If isSandbox = false, combatFee is ignored
+func New(token string, isSandbox bool, combatFee float64) *TradeEnv {
 	tradeEnv := &TradeEnv{
 		token:            token,
 		isSandbox:        isSandbox,
-		fee:              fee,
+		CombatFee:        combatFee,
 		accountsRegistry: newAccountsRegistry(),
 		Client:           client.NewClient(token),
 		Channels:         make(map[string]MarketDataChannelStack),
@@ -35,7 +35,7 @@ func New(token string, isSandbox bool, fee float64) *TradeEnv {
 
 		info, err := tradeEnv.Client.GetInfo()
 		utils.MaybeCrash(err)
-		tradeEnv.fee = utils.Fees[utils.Tariff(info.Tariff)]
+		tradeEnv.CombatFee = utils.Fees[utils.Tariff(info.Tariff)]
 	}
 
 	go tradeEnv.Client.RunMarketDataStreamLoop(tradeEnv.handleMarketDataStream)

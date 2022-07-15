@@ -18,7 +18,7 @@ const DBname = "tinkoff_invest_contest"
 
 var db *sqlx.DB
 
-func InitDB() {
+func init() {
 	connStr := fmt.Sprintf("host=%v user=%v password=%v dbname=%v sslmode=disable",
 		Host, User, Password, DBname)
 
@@ -54,10 +54,10 @@ func CreateCandlesTable(botId string) error {
 	return nil
 }
 
-func CreateIndicatorValuesTable(botId string, descriptor []string) {
+func CreateIndicatorValuesTable(botId string, fields []string) {
 	ensureDBInitialized()
 	sqlStr := fmt.Sprintf("CREATE TABLE IF NOT EXISTS bot_%v_indicators (", botId)
-	for _, name := range descriptor {
+	for _, name := range fields {
 		sqlStr += name + " DOUBLE PRECISION, "
 	}
 	sqlStr += "time TIMESTAMP WITH TIME ZONE UNIQUE)"

@@ -8,7 +8,11 @@ import (
 
 func BotControls(c *gin.Context) {
 	id := c.Query("id")
-	bot := app.Bots[id]
+	bot, ok := app.Bots[id]
+	if !ok {
+		_, _ = c.Writer.WriteString("bot #" + id + " does not exist")
+		return
+	}
 
 	templateArgs := struct {
 		Id        string
@@ -21,4 +25,8 @@ func BotControls(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "bot_controls.html", templateArgs)
+}
+
+func CreateBotForm(c *gin.Context) {
+	c.HTML(http.StatusOK, "create_bot.html", nil)
 }

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous"-->
+  <link href="https://bootswatch.com/5/cyborg/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      overflow: hidden;
+    }
+  </style>
+  <title></title>
+</head>
+<body style="background-color: transparent;">
+  <form class="mx-3 my-3" id="createBotForm">
+    <div class="form-check form-switch py-2">
+      <input class="form-check-input" type="checkbox" role="switch" name="sandbox" id="sandboxSwitch" value="1" checked
+      onclick="switchSandbox()">
+      <label class="form-check-label" for="sandboxSwitch">Sandbox</label>
+    </div>
+    <div class="form-group py-2">
+      <label class="mb-2" for="figiText">FIGI</label>
+      <input class="form-control" id="figiText" type="text" name="figi" placeholder="BBG000B9XRY4">
+    </div>
+    <div class="form-group py-2">
+      <label class="mb-2" for="instrumentTypeSelect">Instrument type</label>
+      <select class="form-select" id="instrumentTypeSelect" name="instrumentType">
+        <option value="share" selected>Share</option>
+        <option value="bond">Bond</option>
+        <option value="currency">Currency</option>
+        <option value="etf">ETF</option>
+        <option value="future">Future</option>
+      </select>
+    </div>
+    <div class="form-check py-2 d-none" id="allowMarginCheckboxDiv">
+      <input class="form-check-input" type="checkbox" id="allowMarginCheckbox" name="allowMargin" value="1">
+      <label class="form-check-label" for="allowMarginCheckbox">Allow margin trading</label>
+    </div>
+    <div class="form-group py-2" id="feeTextDiv">
+      <label class="mb-2" for="feeText">Fee (%)</label>
+      <input class="form-control" id="feeText" type="number" name="fee" list="fees" value="0.04">
+      <datalist id="fees">
+        <option value="0.3">Investor</option>
+        <option value="0.04">Trader</option>
+        <option value="0.025">Premium</option>
+      </datalist>
+    </div>
+    <div class="form-group py-2">
+      <label for="windowText">Window (for TI strategies)</label>
+      <input class="form-control" id="windowText" type="number" name="window" value="30">
+    </div>
+    <div class="form-group py-2">
+      <p class="mb-1">Candle interval (for TI strategies)</p>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="candleInterval" id="candleIntervalRadio1" value="1min" checked>
+        <label class="form-check-label" for="candleIntervalRadio1">1 min</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="candleInterval" id="candleIntervalRadio2" value="5min">
+        <label class="form-check-label" for="candleIntervalRadio2">5 min</label>
+      </div>
+    </div>
+    <div class="form-group py-2">
+      <label class="mb-2" for="strategyNameSelect">Strategy</label>
+      <select class="form-select" id="strategyNameSelect" name="strategyName" onchange="printStrategyDefaults()">
+        <option disabled selected value></option>
+      </select>
+    </div>
+    <div class="form-group py-2">
+      <textarea class="form-control font-monospace" id="strategyConfigTextarea" name="strategyConfig" rows="5">{}</textarea>
+    </div>
+    <button class="btn btn-primary py-2 my-3" type="button" onclick="createBot()">Create</button>
+  </form>
+  <div class="toast-container position-fixed bottom-0 start-0 m-3 p-3">
+    <div class="toast align-items-center" role="alert" aria-live="assertive" aria-atomic="true" id="toast">
+      <div class="d-flex">
+        <div class="toast-body" id="toastText"></div>
+        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous"></script>
+  <script>
+    $(function (){
+      fetch("/api/strategies/GetNames", {
+        method: "GET"
+      }).then(async resp => {
+        let names = JSON.parse(await resp.text())
+        names.forEach(name => {
+          $("#strategyNameSelect").append($("<option>", {
+            value: name,
+            text: name
+          }))
+        })
+      })
+    })
+
+    function switchSandbox() {
+      let allowMarginDiv = $("#allowMarginCheckboxDiv")
+      let feeDiv = $("#feeTextDiv")
+      if (allowMarginDiv.hasClass("d-none")) {
+        allowMarginDiv.removeClass("d-none")
+        feeDiv.addClass("d-none")
+      } else {
+        allowMarginDiv.addClass("d-none")
+        feeDiv.removeClass("d-none")
+      }
+    }
+
+    function printStrategyDefaults() {
+      let name = $("#strategyNameSelect").val()
+      fetch("/api/strategies/GetDefaults?name="+name, {
+        method: "GET"
+      }).then(async resp => {
+        $("#strategyConfigTextarea").html(await resp.text())
+      })
+    }
+
+    function createBot () {
+      fetch("/api/bots/Create?"+$("#createBotForm").serialize(), {
+        method: "POST"
+      }).then(async resp => {
+        resp = JSON.parse(await resp.text())
+        if (resp.Status === 200) {
+          $("#toastText").html("Bot \'"+resp.Payload[0].Name+"\' successfully created")
+        } else {
+          $("#toastText").html("Error "+resp.Status+": "+resp.Message)
+        }
+        (new bootstrap.Toast($("#toast"))).show()
+      })
+    }
+  </script>
+</body>
+</html>
