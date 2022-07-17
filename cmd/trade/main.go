@@ -40,17 +40,22 @@ func runServer() {
 	router.LoadHTMLFiles(
 		"./web/templates/bot_controls.html",
 		"./web/templates/create_bot.html",
+		"./web/templates/create_sandbox_account.html",
 	)
 
 	router.POST("/api/bots/Create", api.CreateBot)
 	router.POST("/api/bots/Start", api.StartBot)
 	router.POST("/api/bots/TogglePause", api.TogglePauseBot)
 	router.POST("/api/bots/Remove", api.RemoveBot)
+
 	router.GET("/api/strategies/GetNames", api.GetStrategiesNames)
 	router.GET("/api/strategies/GetDefaults", api.GetStrategyDefaults)
 
+	router.POST("/api/accounts/Create", api.CreateSandboxAccount)
+
 	router.GET("/botcontrols", uihandlers.BotControls)
 	router.GET("/createbot", uihandlers.CreateBotForm)
+	router.GET("/createsandboxaccount", uihandlers.CreateSandboxAccountForm)
 
 	log.Fatalln(router.Run())
 }

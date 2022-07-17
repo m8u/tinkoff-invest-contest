@@ -56,9 +56,10 @@ func (e *TradeEnv) SetAccountUnoccupied(accountId string, currency string) {
 	e.accountsRegistry.mu.Unlock()
 }
 
-func (e *TradeEnv) CreateSandboxAccount(money map[string]float64) {
+func (e *TradeEnv) CreateSandboxAccount(money map[string]float64) (accountId string) {
 	accountResp, err := e.Client.OpenSandboxAccount()
 	utils.MaybeCrash(err)
+	accountId = accountResp.AccountId
 	e.accountsRegistry.accounts[accountResp.AccountId] = make(map[string]*moneyPosition)
 	for currency, amount := range money {
 		if amount > 0 {
@@ -70,6 +71,7 @@ func (e *TradeEnv) CreateSandboxAccount(money map[string]float64) {
 			occupied: false,
 		}
 	}
+	return
 }
 
 func (e *TradeEnv) loadCombatAccounts() {

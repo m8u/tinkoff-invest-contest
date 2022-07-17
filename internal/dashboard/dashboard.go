@@ -2,10 +2,12 @@ package dashboard
 
 import (
 	"encoding/json"
+	"errors"
 	grafana "github.com/grafana/grafana-api-golang-client"
 	"log"
 	"os"
 	"strings"
+	"time"
 	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -13,7 +15,6 @@ import (
 var client *grafana.Client
 
 var botsFolder grafana.Folder
-var utilitiesFolder grafana.Folder
 
 var botDashboardTemplate []byte
 
@@ -27,11 +28,15 @@ func init() {
 		log.Fatalf("error creating Grafana API client: %v", err)
 	}
 
-	dataSources, err := client.DataSources()
-	if err != nil {
-		log.Printf("can't get Grafana datasources: %v", err)
-		client = nil // TODO: try again after some time if not initialized (when trade service starts before grafana)
-		return
+	var dataSources []*grafana.DataSource
+	err = errors.New("")
+	for err != nil {
+		dataSources, err = client.DataSources()
+		if err == nil {
+			break
+		}
+		log.Printf("can't connect to Grafana: %v. Retrying...", err)
+		time.Sleep(5 * time.Second)
 	}
 	for _, dataSource := range dataSources {
 		if dataSource.Name == "PostgreSQL" {
@@ -63,14 +68,13 @@ func init() {
 		_ = client.DeleteFolder(folder.UID)
 	}
 	botsFolder, _ = client.NewFolder("Bots")
-	utilitiesFolder, _ = client.NewFolder("Utilities")
 
-	_ = addUtilityDashboard("internal/dashboard/templates/create_bot_dashboard.json", utilitiesFolder.ID)
+	_ = addUtilityDashboard("internal/dashboard/templates/create_bot_dashboard.json")
 
 	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
 }
 
-func addUtilityDashboard(templatePath string, folderID int64) error {
+func addUtilityDashboard(templatePath string) error {
 	template, _ := os.ReadFile(templatePath)
 	modelStr := string(template)
 	modelStr = strings.ReplaceAll(modelStr, "<host>", os.Getenv("HOST"))
@@ -79,7 +83,6 @@ func addUtilityDashboard(templatePath string, folderID int64) error {
 	_ = json.Unmarshal([]byte(modelStr), &model)
 	dashboard := grafana.Dashboard{
 		Model:     model,
-		Folder:    folderID,
 		Overwrite: true,
 	}
 	_, err := client.NewDashboard(dashboard)

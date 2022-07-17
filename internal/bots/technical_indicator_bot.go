@@ -220,9 +220,6 @@ func (bot *TechnicalIndicatorBot) TogglePause() {
 
 func (bot *TechnicalIndicatorBot) Remove() {
 	bot.removing = true
-
-	// TODO: remove all bot data from db
-
 	err := bot.tradeEnv.Client.UnsubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 	if err != nil {
 		log.Println(utils.PrettifyError(err))

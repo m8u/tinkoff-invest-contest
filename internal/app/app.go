@@ -3,6 +3,7 @@ package app
 import (
 	"tinkoff-invest-contest/internal/bots"
 	"tinkoff-invest-contest/internal/tradeenv"
+	"tinkoff-invest-contest/internal/utils"
 )
 
 var (
@@ -12,5 +13,6 @@ var (
 )
 
 func init() {
+	SandboxEnv = tradeenv.New(utils.GetSandboxToken(), true, utils.Fees[utils.Trader])
 	Bots = make(map[string]bots.Bot)
 }

@@ -15,9 +15,9 @@ import (
 var botId int64
 
 type response struct {
-	Status  int
-	Message string
-	Payload any
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Payload any    `json:"payload"`
 }
 
 func marshalResponse(status int, message string, payload ...any) string {
@@ -56,9 +56,6 @@ func CreateBot(c *gin.Context) {
 	var tradeEnv *tradeenv.TradeEnv
 	var fee float64
 	if args.Sandbox {
-		if app.SandboxEnv == nil {
-			app.SandboxEnv = tradeenv.New(utils.GetSandboxToken(), true, utils.Fees[utils.Trader])
-		}
 		tradeEnv = app.SandboxEnv
 		fee = args.Fee / 100
 	} else {
@@ -129,7 +126,7 @@ func CreateBot(c *gin.Context) {
 		http.StatusOK,
 		"",
 		struct {
-			Name string
+			Name string `json:"name"`
 		}{name},
 	))
 }

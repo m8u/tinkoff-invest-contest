@@ -27,11 +27,12 @@ func init() {
 	if err != nil {
 		log.Fatalf("unable to connect to database: %v", err)
 	}
+
 }
 
 func ensureDBInitialized() {
 	if db == nil {
-		log.Fatalln("database was not initialized")
+		log.Fatalln("database connection was not initialized")
 	}
 }
 

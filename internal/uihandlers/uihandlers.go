@@ -30,3 +30,7 @@ func BotControls(c *gin.Context) {
 func CreateBotForm(c *gin.Context) {
 	c.HTML(http.StatusOK, "create_bot.html", nil)
 }
+
+func CreateSandboxAccountForm(c *gin.Context) {
+	c.HTML(http.StatusOK, "create_sandbox_account.html", nil)
+}

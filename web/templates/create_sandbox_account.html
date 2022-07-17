@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://bootswatch.com/5/cyborg/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      overflow: hidden;
+    }
+  </style>
+  <title></title>
+</head>
+<body style="background-color: transparent;">
+<form class="mx-3 my-3" id="createSandboxAccountForm">
+  <div class="form-group py-2">
+    <label for="rubAmountText">RUB amount</label>
+    <input class="form-control" id="rubAmountText" type="number" name="rub" value="100000">
+  </div>
+  <div class="form-group py-2">
+    <label for="usdAmountText">USD amount</label>
+    <input class="form-control" id="usdAmountText" type="number" name="usd" value="10000">
+  </div>
+  <button class="btn btn-primary py-2 my-3" type="button" onclick="createSandboxAccount()">Create</button>
+</form>
+<div class="toast-container position-fixed bottom-0 start-0 m-3 p-3">
+  <div class="toast align-items-center" role="alert" aria-live="assertive" aria-atomic="true" id="toast">
+    <div class="d-flex">
+      <div class="toast-body" id="toastText"></div>
+      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous"></script>
+<script>
+  function createSandboxAccount () {
+    fetch("/api/accounts/Create?"+$("#createSandboxAccountForm").serialize(), {
+      method: "POST"
+    }).then(async resp => {
+      resp = JSON.parse(await resp.text())
+      if (resp.status === 200) {
+        $("#toastText").html("Account \'"+resp.payload[0].accountId+"\' successfully created")
+      } else {
+        $("#toastText").html("Error "+resp.status+": "+resp.message)
+      }
+      (new bootstrap.Toast($("#toast"))).show()
+    })
+  }
+</script>
+</body>
+</html>
