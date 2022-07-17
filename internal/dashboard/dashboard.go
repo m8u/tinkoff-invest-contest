@@ -69,7 +69,8 @@ func init() {
 	}
 	botsFolder, _ = client.NewFolder("Bots")
 
-	_ = addUtilityDashboard("internal/dashboard/templates/create_bot_dashboard.json")
+	_ = addUtilityDashboard("internal/dashboard/templates/create_bot.json")
+	_ = addUtilityDashboard("internal/dashboard/templates/create_sandbox_account.json")
 
 	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
 }

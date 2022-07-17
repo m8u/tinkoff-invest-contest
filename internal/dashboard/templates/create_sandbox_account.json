@@ -1,0 +1,83 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "dashboard",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "header_js": "{}",
+      "method": "iframe",
+      "mode": "html",
+      "params_js": "{\n}",
+      "request": "http",
+      "responseType": "text",
+      "showErrors": false,
+      "showTime": false,
+      "showTimeFormat": "LTS",
+      "showTimeValue": "request",
+      "skipSameURL": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A"
+        }
+      ],
+      "templateResponse": true,
+      "transparent": true,
+      "type": "ryantxu-ajax-panel",
+      "url": "http://<host>:<port>/createsandboxaccount",
+      "withCredentials": false
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Create sandbox account",
+  "version": 5,
+  "weekStart": ""
+}
