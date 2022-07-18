@@ -28,6 +28,7 @@
   "liveNow": false,
   "panels": [
     {
+      "id": 0,
       "datasource": {
         "type": "postgres",
         "uid": "PostgreSQL"
@@ -89,7 +90,7 @@
       },
       "gridPos": {
         "h": 16,
-        "w": 17,
+        "w": 13,
         "x": 0,
         "y": 0
       },
@@ -194,7 +195,7 @@
       "gridPos": {
         "h": 5,
         "w": 4,
-        "x": 17,
+        "x": 13,
         "y": 0
       },
       "header_js": "{}",
@@ -223,6 +224,41 @@
       "type": "ryantxu-ajax-panel",
       "url": "http://<host>:<port>/botcontrols?id=<bot_id>",
       "withCredentials": false
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "PostgreSQL"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 7,
+        "x": 17,
+        "y": 0
+      },
+      "options": {
+        "limit": 12,
+        "navigateAfter": "10m",
+        "navigateBefore": "10m",
+        "onlyFromThisDashboard": true,
+        "onlyInTimeRange": true,
+        "showTags": true,
+        "showTime": true,
+        "showUser": true
+      },
+
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "Orders",
+      "transparent": true,
+      "type": "annolist"
     }
   ],
   "refresh": "1s",

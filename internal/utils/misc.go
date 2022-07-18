@@ -75,6 +75,17 @@ type TradeSignal struct {
 	Direction investapi.OrderDirection
 }
 
+func OrderDirectionToString(direction investapi.OrderDirection) string {
+	switch direction {
+	case investapi.OrderDirection_ORDER_DIRECTION_BUY:
+		return "BUY"
+	case investapi.OrderDirection_ORDER_DIRECTION_SELL:
+		return "SELL"
+	default:
+		return ""
+	}
+}
+
 func MoneyValueFromFloat(currency string, value float64) *investapi.MoneyValue {
 	units, nano := math.Modf(value)
 	return &investapi.MoneyValue{

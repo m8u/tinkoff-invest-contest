@@ -109,7 +109,9 @@ func CreateBot(c *gin.Context) {
 			return
 		}
 
-		app.Bots[id] = bots.NewTechnicalIndicatorBot(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.AllowMargin, fee, strategy)
+		app.Bots.Lock.Lock()
+		app.Bots.Table[id] = bots.NewTechnicalIndicatorBot(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.AllowMargin, fee, strategy)
+		app.Bots.Lock.Unlock()
 		//} else if newStrategyFromJSON, ok := obstrategy.JSONConstructors[strategyParams.Name]; ok {
 
 		//}
@@ -133,25 +135,27 @@ func CreateBot(c *gin.Context) {
 
 func StartBot(c *gin.Context) {
 	id := c.Query("id")
-	go app.Bots[id].Serve()
+	go app.Bots.Table[id].Serve()
 
 	_, _ = c.Writer.WriteString("ok")
 }
 
 func TogglePauseBot(c *gin.Context) {
 	id := c.Query("id")
-	app.Bots[id].TogglePause()
+	app.Bots.Table[id].TogglePause()
 
 	_, _ = c.Writer.WriteString("ok")
 }
 
 func RemoveBot(c *gin.Context) {
 	id := c.Query("id")
-	if app.Bots[id].IsPaused() {
-		app.Bots[id].TogglePause()
+	if app.Bots.Table[id].IsPaused() {
+		app.Bots.Table[id].TogglePause()
 	}
-	app.Bots[id].Remove()
-	delete(app.Bots, id)
+	app.Bots.Table[id].Remove()
+	app.Bots.Lock.Lock()
+	delete(app.Bots.Table, id)
+	app.Bots.Lock.Unlock()
 
 	_, _ = c.Writer.WriteString("ok")
 }

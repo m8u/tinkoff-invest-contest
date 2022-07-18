@@ -8,7 +8,9 @@ import (
 
 func BotControls(c *gin.Context) {
 	id := c.Query("id")
-	bot, ok := app.Bots[id]
+	app.Bots.Lock.Lock()
+	bot, ok := app.Bots.Table[id]
+	app.Bots.Lock.Unlock()
 	if !ok {
 		_, _ = c.Writer.WriteString("bot #" + id + " does not exist")
 		return

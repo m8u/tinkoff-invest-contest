@@ -3,20 +3,21 @@ package dashboard
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	grafana "github.com/grafana/grafana-api-golang-client"
 	"log"
 	"os"
 	"strings"
 	"time"
+	"tinkoff-invest-contest/internal/client/investapi"
 	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/utils"
 )
 
 var client *grafana.Client
-
 var botsFolder grafana.Folder
-
 var botDashboardTemplate []byte
+var botDashboards map[string]int64
 
 func init() {
 	var err error
@@ -73,6 +74,7 @@ func init() {
 	_ = addUtilityDashboard("internal/dashboard/templates/create_sandbox_account.json")
 
 	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
+	botDashboards = make(map[string]int64)
 }
 
 func addUtilityDashboard(templatePath string) error {
@@ -114,10 +116,11 @@ func AddBotDashboard(botId string, botName string) error {
 		Folder:    botsFolder.ID,
 		Overwrite: true,
 	}
-	_, err := client.NewDashboard(dashboard)
+	resp, err := client.NewDashboard(dashboard)
 	if err != nil {
 		return err
 	}
+	botDashboards[botId] = resp.ID
 	return nil
 }
 
@@ -127,4 +130,18 @@ func RemoveBotDashboards() {
 		log.Printf("can't delete Grafana folder: %v", err)
 		client = nil
 	}
+}
+
+func AnnotateOrder(botId string, direction investapi.OrderDirection, quantity int64, price float64, currency string) {
+	client.NewAnnotation(&grafana.Annotation{
+		DashboardID: botDashboards[botId],
+		PanelID:     0,
+		Text: fmt.Sprintf("%v %v for %v %v",
+			utils.OrderDirectionToString(direction),
+			quantity,
+			price,
+			currency,
+		),
+		Tags: []string{utils.OrderDirectionToString(direction)},
+	})
 }
