@@ -3,11 +3,13 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"io"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"tinkoff-invest-contest/internal/api"
+	"tinkoff-invest-contest/internal/api/botlog"
 	"tinkoff-invest-contest/internal/app"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/dashboard"
@@ -43,6 +45,7 @@ func runServer() {
 		"./web/templates/bot_controls.html",
 		"./web/templates/create_bot.html",
 		"./web/templates/create_sandbox_account.html",
+		"./web/templates/bot_log.html",
 	)
 
 	router.POST("/api/bots/Create", api.CreateBot)
@@ -54,10 +57,12 @@ func runServer() {
 	router.GET("/api/strategies/GetDefaults", api.GetStrategyDefaults)
 
 	router.POST("/api/accounts/Create", api.CreateSandboxAccount)
+	router.GET("/ws/botlog", botlog.Echo)
 
 	router.GET("/botcontrols", uihandlers.BotControls)
 	router.GET("/createbot", uihandlers.CreateBotForm)
 	router.GET("/createsandboxaccount", uihandlers.CreateSandboxAccountForm)
+	router.GET("/botlog", uihandlers.BotLogConsole)
 
 	log.Fatalln(router.Run())
 }
@@ -65,6 +70,9 @@ func runServer() {
 func main() {
 	appstate.ExitActionsWG.Add(1)
 	_ = godotenv.Load(".env")
+
+	mw := io.MultiWriter(os.Stdout, botlog.Writer)
+	log.SetOutput(mw)
 
 	go runServer()
 

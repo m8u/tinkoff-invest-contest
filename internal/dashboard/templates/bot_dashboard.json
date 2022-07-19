@@ -89,10 +89,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 16,
-        "w": 13,
+        "h": 15,
+        "w": 17,
         "x": 0,
-        "y": 0
+        "y": 5
       },
       "options": {
         "candleStyle": "candles",
@@ -194,12 +194,11 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 13,
+        "w": 3,
+        "x": 0,
         "y": 0
       },
       "header_js": "{}",
-      "id": 3,
       "method": "iframe",
       "mode": "html",
       "params_js": "{\n}",
@@ -231,10 +230,10 @@
         "uid": "PostgreSQL"
       },
       "gridPos": {
-        "h": 16,
+        "h": 15,
         "w": 7,
         "x": 17,
-        "y": 0
+        "y": 5
       },
       "options": {
         "limit": 12,
@@ -259,6 +258,43 @@
       "title": "Orders",
       "transparent": true,
       "type": "annolist"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "PostgreSQL"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 21,
+        "x": 3,
+        "y": 0
+      },
+      "header_js": "{}",
+      "method": "iframe",
+      "mode": "html",
+      "params_js": "{\n}",
+      "request": "http",
+      "responseType": "text",
+      "showErrors": false,
+      "showTime": false,
+      "showTimeFormat": "LTS",
+      "showTimeValue": "request",
+      "skipSameURL": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A"
+        }
+      ],
+      "templateResponse": true,
+      "transparent": true,
+      "type": "ryantxu-ajax-panel",
+      "url": "http://<host>:<port>/botlog?id=<bot_id>",
+      "withCredentials": false
     }
   ],
   "refresh": "1s",

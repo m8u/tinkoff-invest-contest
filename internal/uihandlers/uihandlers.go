@@ -36,3 +36,13 @@ func CreateBotForm(c *gin.Context) {
 func CreateSandboxAccountForm(c *gin.Context) {
 	c.HTML(http.StatusOK, "create_sandbox_account.html", nil)
 }
+
+func BotLogConsole(c *gin.Context) {
+	id := c.Query("id")
+
+	templateArgs := struct {
+		Id string
+	}{id}
+
+	c.HTML(http.StatusOK, "bot_log.html", templateArgs)
+}

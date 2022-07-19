@@ -1,6 +1,7 @@
 package bots
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"time"
@@ -72,7 +73,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 
 	instrument, err := bot.tradeEnv.Client.InstrumentByFigi(bot.figi, bot.instrumentType)
 	if err != nil {
-		log.Println(utils.PrettifyError(err))
+		log.Println(bot.logPrefix(), utils.PrettifyError(err))
 		return err
 	}
 
@@ -84,7 +85,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				// On a new candle, get historic candles in amount of >= window
 				candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
 				if err != nil {
-					log.Println(utils.PrettifyError(err))
+					log.Println(bot.logPrefix(), utils.PrettifyError(err))
 					return err
 				}
 				// Trim excessive candles
@@ -134,7 +135,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 						bot.allowMargin,
 					)
 					if err != nil {
-						log.Println(utils.PrettifyError(err))
+						log.Println(bot.logPrefix(), utils.PrettifyError(err))
 						unlock()
 						return err
 					}
@@ -150,7 +151,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					shouldUnoccupyAccount = true
 					lots, err = bot.tradeEnv.GetLotsHave(bot.occupiedAccountId, instrument)
 					if err != nil {
-						log.Println(utils.PrettifyError(err))
+						log.Println(bot.logPrefix(), utils.PrettifyError(err))
 						return err
 					}
 					lots = int64(math.Abs(float64(lots)))
@@ -159,11 +160,12 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				}
 
 				// Place an order and wait for it to be filled
-				log.Printf("\n[Order]\n%v lots for %v\n%v\nfigi: %v\naccount: %v\n",
+				log.Printf("%v %v %v lots for %v %v, account: %v",
+					bot.logPrefix(),
+					utils.OrderDirectionToString(signal.Direction),
 					lots,
 					utils.FloatFromQuotation(currentCandle.Close),
-					signal.Direction.String(),
-					bot.figi,
+					instrument.GetCurrency(),
 					bot.occupiedAccountId,
 				)
 				err := bot.tradeEnv.DoOrder(
@@ -175,7 +177,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					investapi.OrderType_ORDER_TYPE_MARKET,
 				)
 				if err != nil {
-					log.Printf("order error: %v", utils.PrettifyError(err))
+					log.Printf("%v order error: %v", bot.logPrefix(), utils.PrettifyError(err))
 					return err
 				}
 				dashboard.AnnotateOrder(
@@ -206,7 +208,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 func (bot *TechnicalIndicatorBot) Serve() {
 	bot.started = true
 	for !appstate.ShouldExit && !bot.removing {
-		log.Printf("bot %q is starting...", bot.name)
+		log.Printf("%v bot %q is starting...", bot.logPrefix(), bot.name)
 
 		utils.WaitForInternetConnection()
 
@@ -215,7 +217,7 @@ func (bot *TechnicalIndicatorBot) Serve() {
 
 		err = bot.loop()
 		if err != nil {
-			log.Printf("bot %q has crashed, restarting...", bot.name)
+			log.Printf("%v bot %q has crashed, restarting...", bot.logPrefix(), bot.name)
 			time.Sleep(10 * time.Second)
 		}
 	}
@@ -223,14 +225,20 @@ func (bot *TechnicalIndicatorBot) Serve() {
 
 func (bot *TechnicalIndicatorBot) TogglePause() {
 	bot.paused = !bot.paused
+	if bot.paused {
+		log.Printf("%v bot %q is paused", bot.logPrefix(), bot.name)
+	} else {
+		log.Printf("%v bot %q resumed, continue trading...", bot.logPrefix(), bot.name)
+	}
 }
 
 func (bot *TechnicalIndicatorBot) Remove() {
 	bot.removing = true
 	err := bot.tradeEnv.Client.UnsubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 	if err != nil {
-		log.Println(utils.PrettifyError(err))
+		log.Println(bot.logPrefix(), utils.PrettifyError(err))
 	}
+	log.Printf("%v bot %q has been removed", bot.logPrefix(), bot.name)
 }
 
 func (bot *TechnicalIndicatorBot) IsPaused() bool {
@@ -239,4 +247,8 @@ func (bot *TechnicalIndicatorBot) IsPaused() bool {
 
 func (bot *TechnicalIndicatorBot) IsStarted() bool {
 	return bot.started
+}
+
+func (bot *TechnicalIndicatorBot) logPrefix() string {
+	return fmt.Sprintf("[bot#%v]", bot.id)
 }
