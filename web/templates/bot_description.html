@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.6.0/build/styles/felipec.min.css">
+    <style>
+        body {
+            background-color: transparent;
+            margin: 0;
+        }
+        pre {
+            margin: 0;
+        }
+        .language-yaml {
+            background-color: transparent;
+            margin: 0;
+        }
+        span {
+            font-size: large;
+        }
+    </style>
+</head>
+<body>
+    <pre><code class="language-yaml">{{ .DescriptionYAML }}</code></pre>
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.6.0/build/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

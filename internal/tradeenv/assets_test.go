@@ -7,7 +7,7 @@ import (
 )
 
 func TestTradeEnv_CalculateLotsCanAfford(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true)
+	e := New(utils.GetSandboxToken(), true, 0)
 	type args struct {
 		direction      investapi.OrderDirection
 		maxDealValue   float64
@@ -32,7 +32,7 @@ func TestTradeEnv_CalculateLotsCanAfford(t *testing.T) {
 				maxDealValue:   10000,
 				figi:           "BBG006L8G4H1",
 				instrumentType: utils.InstrumentType_INSTRUMENT_TYPE_SHARE,
-				price:          utils.QuotationFromFloat(1000),
+				price:          utils.FloatToQuotation(1000),
 				fee:            0,
 			},
 			want: 10,
@@ -49,7 +49,7 @@ func TestTradeEnv_CalculateLotsCanAfford(t *testing.T) {
 }
 
 func TestTradeEnv_CalculateMaxDealValue(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true)
+	e := New(utils.GetSandboxToken(), true, 0)
 	e.CreateSandboxAccount(map[string]float64{"rub": 10000, "usd": 0})
 
 	type args struct {
@@ -72,7 +72,7 @@ func TestTradeEnv_CalculateMaxDealValue(t *testing.T) {
 				direction:      investapi.OrderDirection_ORDER_DIRECTION_BUY,
 				figi:           "BBG006L8G4H1",
 				instrumentType: utils.InstrumentType_INSTRUMENT_TYPE_SHARE,
-				price:          utils.QuotationFromFloat(1000),
+				price:          utils.FloatToQuotation(1000),
 				allowMargin:    false,
 			},
 			want:    10000,
@@ -101,7 +101,7 @@ func TestTradeEnv_CalculateMaxDealValue(t *testing.T) {
 }
 
 func TestTradeEnv_GetLotsHave(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true)
+	e := New(utils.GetSandboxToken(), true, 0)
 	e.CreateSandboxAccount(map[string]float64{"rub": 100000, "usd": 0})
 	type args struct {
 		figi           string
@@ -127,7 +127,7 @@ func TestTradeEnv_GetLotsHave(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			instrument, _ := e.Client.InstrumentByFigi(tt.args.figi, tt.args.instrumentType)
 			accountId, unlock := e.GetUnoccupiedAccount(instrument.GetCurrency())
-			_ = e.DoOrder(tt.args.figi, tt.wantLots, utils.QuotationFromFloat(1000),
+			_ = e.DoOrder(tt.args.figi, tt.wantLots, utils.FloatToQuotation(1000),
 				investapi.OrderDirection_ORDER_DIRECTION_BUY, accountId, investapi.OrderType_ORDER_TYPE_MARKET)
 			gotLots, err := e.GetLotsHave(accountId, instrument)
 			if (err != nil) != tt.wantErr {

@@ -23,16 +23,16 @@ func (bollinger *BollingerBands) Calculate(candles []*investapi.HistoricCandle) 
 	// вычисляем арифметическое среднее "типичных" цен
 	sum = 0
 	for _, candle := range candles {
-		sum += (utils.FloatFromQuotation(candle.High) +
-			utils.FloatFromQuotation(candle.Low) +
-			utils.FloatFromQuotation(candle.Close)) / 3
+		sum += (utils.QuotationToFloat(candle.High) +
+			utils.QuotationToFloat(candle.Low) +
+			utils.QuotationToFloat(candle.Close)) / 3
 	}
 	mean := sum / n
 
 	// вычисляем стандартное отклонение
 	sum = 0
 	for _, candle := range candles {
-		sum += math.Pow(utils.FloatFromQuotation(candle.Close)-mean, 2)
+		sum += math.Pow(utils.QuotationToFloat(candle.Close)-mean, 2)
 	}
 	sd := math.Sqrt(sum / n)
 
@@ -41,4 +41,8 @@ func (bollinger *BollingerBands) Calculate(candles []*investapi.HistoricCandle) 
 	upperBound := mean + bollinger.coef*(sd)
 
 	return lowerBound, upperBound
+}
+
+func (bollinger *BollingerBands) GetCoef() float64 {
+	return bollinger.coef
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestTradeEnv_DoOrder(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true)
+	e := New(utils.GetSandboxToken(), true, 0)
 	type args struct {
 		figi           string
 		instrumentType utils.InstrumentType
@@ -25,7 +25,7 @@ func TestTradeEnv_DoOrder(t *testing.T) {
 				figi:           "BBG006L8G4H1",
 				instrumentType: utils.InstrumentType_INSTRUMENT_TYPE_SHARE,
 				quantity:       1,
-				price:          utils.QuotationFromFloat(1000),
+				price:          utils.FloatToQuotation(1000),
 			},
 			wantErr: false,
 		},

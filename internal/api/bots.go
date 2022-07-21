@@ -65,7 +65,7 @@ func CreateBot(c *gin.Context) {
 		tradeEnv = app.CombatEnv
 		fee = tradeEnv.CombatFee
 	}
-	instrumentType, err := utils.InstrumentTypeFromString(args.InstrumentType)
+	instrumentType, err := utils.StringToInstrumentType(args.InstrumentType)
 	if err != nil {
 		_, _ = c.Writer.WriteString(marshalResponse(
 			http.StatusBadRequest,
@@ -100,7 +100,7 @@ func CreateBot(c *gin.Context) {
 			))
 			return
 		}
-		candleInterval, err := utils.CandleIntervalFromString(args.CandleInterval)
+		candleInterval, err := utils.StringToCandleInterval(args.CandleInterval)
 		if err != nil {
 			_, _ = c.Writer.WriteString(marshalResponse(
 				http.StatusBadRequest,

@@ -28,19 +28,19 @@ func TestBollingerBands_Calculate(t *testing.T) {
 			args: args{
 				candles: []*investapi.HistoricCandle{
 					{
-						High:  utils.QuotationFromFloat(186.89),
-						Low:   utils.QuotationFromFloat(186.22),
-						Close: utils.QuotationFromFloat(186.45),
+						High:  utils.FloatToQuotation(186.89),
+						Low:   utils.FloatToQuotation(186.22),
+						Close: utils.FloatToQuotation(186.45),
 					},
 					{
-						High:  utils.QuotationFromFloat(186.49),
-						Low:   utils.QuotationFromFloat(185.87),
-						Close: utils.QuotationFromFloat(185.13),
+						High:  utils.FloatToQuotation(186.49),
+						Low:   utils.FloatToQuotation(185.87),
+						Close: utils.FloatToQuotation(185.13),
 					},
 					{
-						High:  utils.QuotationFromFloat(186.19),
-						Low:   utils.QuotationFromFloat(184.95),
-						Close: utils.QuotationFromFloat(184.95),
+						High:  utils.FloatToQuotation(186.19),
+						Low:   utils.FloatToQuotation(184.95),
+						Close: utils.FloatToQuotation(184.95),
 					},
 				},
 			},

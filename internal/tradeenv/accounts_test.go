@@ -6,7 +6,7 @@ import (
 )
 
 func TestTradeEnv_CreateSandboxAccount(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true)
+	e := New(utils.GetSandboxToken(), true, 0)
 	type args struct {
 		money map[string]float64
 	}
@@ -30,13 +30,13 @@ func TestTradeEnv_CreateSandboxAccount(t *testing.T) {
 					t.Fatal(err)
 				}
 				for _, moneyPos := range positions2.Money {
-					if moneyPos.Currency == "rub" && positions1["rub"].amount != utils.FloatFromMoneyValue(moneyPos) {
+					if moneyPos.Currency == "rub" && positions1["rub"].amount != utils.MoneyValueToFloat(moneyPos) {
 						t.Errorf("CreateSandboxAccount() got accountRegistry rub: %v != GetSandboxPositions rub: %v",
-							positions1["rub"].amount, utils.FloatFromMoneyValue(moneyPos))
+							positions1["rub"].amount, utils.MoneyValueToFloat(moneyPos))
 					}
-					if moneyPos.Currency == "usd" && positions1["usd"].amount != utils.FloatFromMoneyValue(moneyPos) {
+					if moneyPos.Currency == "usd" && positions1["usd"].amount != utils.MoneyValueToFloat(moneyPos) {
 						t.Errorf("CreateSandboxAccount() got accountRegistry usd: %v != GetSandboxPositions usd: %v",
-							positions1["usd"].amount, utils.FloatFromMoneyValue(moneyPos))
+							positions1["usd"].amount, utils.MoneyValueToFloat(moneyPos))
 					}
 				}
 			}
@@ -48,7 +48,7 @@ func TestTradeEnv_CreateSandboxAccount(t *testing.T) {
 }
 
 func TestTradeEnv_GetUnoccupiedAccount(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true)
+	e := New(utils.GetSandboxToken(), true, 0)
 	type args struct {
 		currency string
 	}

@@ -46,3 +46,12 @@ func BotLogConsole(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "bot_log.html", templateArgs)
 }
+
+func BotDescription(c *gin.Context) {
+	id := c.Query("id")
+	desc := app.Bots.Table[id].GetYAML()
+	templateArgs := struct {
+		DescriptionYAML string
+	}{desc}
+	c.HTML(http.StatusOK, "bot_description.html", templateArgs)
+}

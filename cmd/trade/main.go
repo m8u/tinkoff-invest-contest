@@ -46,6 +46,7 @@ func runServer() {
 		"./web/templates/create_bot.html",
 		"./web/templates/create_sandbox_account.html",
 		"./web/templates/bot_log.html",
+		"./web/templates/bot_description.html",
 	)
 
 	router.POST("/api/bots/Create", api.CreateBot)
@@ -63,6 +64,7 @@ func runServer() {
 	router.GET("/createbot", uihandlers.CreateBotForm)
 	router.GET("/createsandboxaccount", uihandlers.CreateSandboxAccountForm)
 	router.GET("/botlog", uihandlers.BotLogConsole)
+	router.GET("/botdesc", uihandlers.BotDescription)
 
 	log.Fatalln(router.Run())
 }

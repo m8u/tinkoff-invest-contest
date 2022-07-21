@@ -2,6 +2,7 @@ package bollinger
 
 import (
 	"encoding/json"
+	"github.com/go-yaml/yaml"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/strategies/tistrategy"
 	indicators "tinkoff-invest-contest/internal/technical_indicators"
@@ -14,8 +15,8 @@ type strategy struct {
 }
 
 type params struct {
-	Coef           float64 `json:"coef"`
-	PointDeviation float64 `json:"pointDev"`
+	Coef           float64 `json:"coef" yaml:"Coef"`
+	PointDeviation float64 `json:"pointDev" yaml:"PointDeviation"`
 }
 
 func NewFromJSON(s string) (tistrategy.TechnicalIndicatorStrategy, error) {
@@ -51,11 +52,11 @@ func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*
 
 	currentCandle := candles[len(candles)-1]
 	var signal *utils.TradeSignal
-	if tistrategy.IsAroundPoint(utils.FloatFromQuotation(currentCandle.Close), lowerBound, strategy.pointDeviation) {
+	if tistrategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, strategy.pointDeviation) {
 		// Сигнал к покупке
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_BUY}
 
-	} else if tistrategy.IsAroundPoint(utils.FloatFromQuotation(currentCandle.Close), upperBound, strategy.pointDeviation) {
+	} else if tistrategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, strategy.pointDeviation) {
 		// Сигнал к продаже
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}
@@ -68,4 +69,14 @@ func (strategy *strategy) GetOutputKeys() []string {
 		"bollinger_lower_bound",
 		"bollinger_upper_bound",
 	}
+}
+
+func (strategy *strategy) GetYAML() string {
+	obj := params{
+		Coef:           strategy.indicator.GetCoef(),
+		PointDeviation: strategy.pointDeviation,
+	}
+	bytes, err := yaml.Marshal(obj)
+	utils.MaybeCrash(err)
+	return string(bytes)
 }

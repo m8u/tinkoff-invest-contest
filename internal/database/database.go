@@ -123,10 +123,10 @@ func sqlizeHistoricCandles(candles []*investapi.HistoricCandle) []any {
 	sqlizedCandles := make([]any, 0)
 	for _, candle := range candles {
 		sqlizedCandles = append(sqlizedCandles, sqlCandle{
-			Open:   utils.FloatFromQuotation(candle.Open),
-			High:   utils.FloatFromQuotation(candle.High),
-			Low:    utils.FloatFromQuotation(candle.Low),
-			Close:  utils.FloatFromQuotation(candle.Close),
+			Open:   utils.QuotationToFloat(candle.Open),
+			High:   utils.QuotationToFloat(candle.High),
+			Low:    utils.QuotationToFloat(candle.Low),
+			Close:  utils.QuotationToFloat(candle.Close),
 			Volume: candle.Volume,
 			Time:   candle.Time.AsTime(),
 		})
@@ -136,10 +136,10 @@ func sqlizeHistoricCandles(candles []*investapi.HistoricCandle) []any {
 
 func sqlizeCandle(candle *investapi.Candle) any {
 	return sqlCandle{
-		Open:   utils.FloatFromQuotation(candle.Open),
-		High:   utils.FloatFromQuotation(candle.High),
-		Low:    utils.FloatFromQuotation(candle.Low),
-		Close:  utils.FloatFromQuotation(candle.Close),
+		Open:   utils.QuotationToFloat(candle.Open),
+		High:   utils.QuotationToFloat(candle.High),
+		Low:    utils.QuotationToFloat(candle.Low),
+		Close:  utils.QuotationToFloat(candle.Close),
 		Volume: candle.Volume,
 		Time:   candle.Time.AsTime(),
 	}

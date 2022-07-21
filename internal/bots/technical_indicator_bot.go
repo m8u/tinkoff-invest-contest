@@ -2,6 +2,7 @@ package bots
 
 import (
 	"fmt"
+	"github.com/go-yaml/yaml"
 	"log"
 	"math"
 	"time"
@@ -164,7 +165,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					bot.logPrefix(),
 					utils.OrderDirectionToString(signal.Direction),
 					lots,
-					utils.FloatFromQuotation(currentCandle.Close),
+					utils.QuotationToFloat(currentCandle.Close),
 					instrument.GetCurrency(),
 					bot.occupiedAccountId,
 				)
@@ -184,7 +185,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					bot.id,
 					signal.Direction,
 					lots*int64(instrument.GetLot()),
-					utils.FloatFromQuotation(currentCandle.Close),
+					utils.QuotationToFloat(currentCandle.Close),
 					instrument.GetCurrency(),
 				)
 
@@ -251,4 +252,27 @@ func (bot *TechnicalIndicatorBot) IsStarted() bool {
 
 func (bot *TechnicalIndicatorBot) logPrefix() string {
 	return fmt.Sprintf("[bot#%v]", bot.id)
+}
+
+func (bot *TechnicalIndicatorBot) GetYAML() string {
+	obj := struct {
+		FIGI        string  `yaml:"FIGI"`
+		AllowMargin bool    `yaml:"AllowMargin"`
+		Fee         float64 `yaml:"Fee"`
+
+		Window         int    `yaml:"Window"`
+		CandleInterval string `yaml:"CandleInterval"`
+
+		Strategy any `yaml:"Strategy"`
+	}{
+		FIGI:           bot.figi,
+		AllowMargin:    bot.allowMargin,
+		Fee:            bot.fee,
+		Window:         bot.window,
+		CandleInterval: utils.CandleIntervalToString(bot.candleInterval),
+		Strategy:       bot.strategy.GetYAML(),
+	}
+	bytes, err := yaml.Marshal(obj)
+	utils.MaybeCrash(err)
+	return string(bytes)
 }

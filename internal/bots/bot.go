@@ -6,4 +6,5 @@ type Bot interface {
 	IsPaused() bool
 	IsStarted() bool
 	Remove()
+	GetYAML() string
 }

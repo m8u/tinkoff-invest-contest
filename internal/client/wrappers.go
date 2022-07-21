@@ -31,12 +31,12 @@ func (c *Client) WrapPostOrder(isSandbox bool, figi string, quantity int64, pric
 	var order *investapi.PostOrderResponse
 	var err error
 	if isSandbox {
-		order, err = c.PostSandboxOrder(figi, quantity, utils.FloatFromQuotation(price), direction, accountId, orderType, orderId)
+		order, err = c.PostSandboxOrder(figi, quantity, utils.QuotationToFloat(price), direction, accountId, orderType, orderId)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		order, err = c.PostOrder(figi, quantity, utils.FloatFromQuotation(price), direction, accountId, orderType, orderId)
+		order, err = c.PostOrder(figi, quantity, utils.QuotationToFloat(price), direction, accountId, orderType, orderId)
 		if err != nil {
 			return nil, err
 		}

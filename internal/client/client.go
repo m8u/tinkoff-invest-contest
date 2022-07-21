@@ -326,7 +326,7 @@ func (c *Client) PostOrder(figi string, quantity int64, price float64, direction
 		&investapi.PostOrderRequest{
 			Figi:      figi,
 			Quantity:  quantity,
-			Price:     utils.QuotationFromFloat(price),
+			Price:     utils.FloatToQuotation(price),
 			Direction: direction,
 			AccountId: accountId,
 			OrderType: orderType,
@@ -347,7 +347,7 @@ func (c *Client) PostSandboxOrder(figi string, quantity int64, price float64, di
 		&investapi.PostOrderRequest{
 			Figi:      figi,
 			Quantity:  quantity,
-			Price:     utils.QuotationFromFloat(price),
+			Price:     utils.FloatToQuotation(price),
 			Direction: direction,
 			AccountId: accountId,
 			OrderType: orderType,
@@ -377,7 +377,7 @@ func (c *Client) SandboxPayIn(accountId string, currency string, amount float64)
 		newContextWithBearerToken(c.token),
 		&investapi.SandboxPayInRequest{
 			AccountId: accountId,
-			Amount:    utils.MoneyValueFromFloat(currency, amount),
+			Amount:    utils.FloatToMoneyValue(currency, amount),
 		},
 	)
 	if err != nil {

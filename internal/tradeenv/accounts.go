@@ -50,7 +50,7 @@ func (e *TradeEnv) SetAccountUnoccupied(accountId string, currency string) {
 	utils.MaybeCrash(err)
 	e.accountsRegistry.mu.Lock()
 	for _, moneyPosition := range positions.Money {
-		e.accountsRegistry.accounts[accountId][moneyPosition.Currency].amount = utils.FloatFromMoneyValue(moneyPosition)
+		e.accountsRegistry.accounts[accountId][moneyPosition.Currency].amount = utils.MoneyValueToFloat(moneyPosition)
 	}
 	e.accountsRegistry.accounts[accountId][currency].occupied = false
 	e.accountsRegistry.mu.Unlock()
@@ -83,7 +83,7 @@ func (e *TradeEnv) loadCombatAccounts() {
 		e.accountsRegistry.accounts[account.Id] = make(map[string]*moneyPosition)
 		for _, position := range positions.Money {
 			e.accountsRegistry.accounts[account.Id][position.Currency] = &moneyPosition{
-				amount:   utils.FloatFromMoneyValue(position),
+				amount:   utils.MoneyValueToFloat(position),
 				occupied: false,
 			}
 		}

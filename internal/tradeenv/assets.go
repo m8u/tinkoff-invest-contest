@@ -22,7 +22,7 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 	var lotsHave int64
 	for _, money := range positions.Money {
 		if money.Currency == instrument.GetCurrency() {
-			moneyHave = utils.FloatFromMoneyValue(money)
+			moneyHave = utils.MoneyValueToFloat(money)
 		}
 	}
 	if len(positions.Securities) > 0 {
@@ -43,20 +43,20 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 	switch direction {
 	case investapi.OrderDirection_ORDER_DIRECTION_BUY:
 		if allowMargin {
-			liquidPortfolio := utils.FloatFromMoneyValue(marginAttributes.LiquidPortfolio)
-			startMargin := utils.FloatFromMoneyValue(marginAttributes.StartingMargin)
-			maxDealValue = (liquidPortfolio - startMargin) / utils.FloatFromQuotation(instrument.GetDlong())
+			liquidPortfolio := utils.MoneyValueToFloat(marginAttributes.LiquidPortfolio)
+			startMargin := utils.MoneyValueToFloat(marginAttributes.StartingMargin)
+			maxDealValue = (liquidPortfolio - startMargin) / utils.QuotationToFloat(instrument.GetDlong())
 		} else {
 			maxDealValue = moneyHave
 		}
 		break
 	case investapi.OrderDirection_ORDER_DIRECTION_SELL:
 		if allowMargin && instrument.GetShortEnabledFlag() {
-			liquidPortfolio := utils.FloatFromMoneyValue(marginAttributes.LiquidPortfolio)
-			startMargin := utils.FloatFromMoneyValue(marginAttributes.StartingMargin)
-			maxDealValue = (liquidPortfolio - startMargin) / utils.FloatFromQuotation(instrument.GetDshort())
+			liquidPortfolio := utils.MoneyValueToFloat(marginAttributes.LiquidPortfolio)
+			startMargin := utils.MoneyValueToFloat(marginAttributes.StartingMargin)
+			maxDealValue = (liquidPortfolio - startMargin) / utils.QuotationToFloat(instrument.GetDshort())
 		} else {
-			maxDealValue = float64(lotsHave) * float64(instrument.GetLot()) * utils.FloatFromQuotation(price)
+			maxDealValue = float64(lotsHave) * float64(instrument.GetLot()) * utils.QuotationToFloat(price)
 		}
 	}
 	return maxDealValue, nil
@@ -65,7 +65,7 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 func (e *TradeEnv) CalculateLotsCanAfford(direction investapi.OrderDirection, maxDealValue float64,
 	instrument utils.InstrumentInterface, price *investapi.Quotation, fee float64) int64 {
 
-	priceFeeIncluded := utils.FloatFromQuotation(price)
+	priceFeeIncluded := utils.QuotationToFloat(price)
 	switch direction {
 	case investapi.OrderDirection_ORDER_DIRECTION_BUY:
 		priceFeeIncluded *= 1 + fee
@@ -86,7 +86,7 @@ func (e *TradeEnv) GetLotsHave(accountId string, instrument utils.InstrumentInte
 	}
 	for _, position := range portfolio.Positions {
 		if position.Figi == instrument.GetFigi() {
-			lots = int64(utils.FloatFromQuotation(position.QuantityLots))
+			lots = int64(utils.QuotationToFloat(position.QuantityLots))
 		}
 	}
 	return

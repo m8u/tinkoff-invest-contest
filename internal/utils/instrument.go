@@ -25,7 +25,7 @@ const (
 	InstrumentType_INSTRUMENT_TYPE_SHARE    InstrumentType = 4
 )
 
-func InstrumentTypeFromString(s string) (InstrumentType, error) {
+func StringToInstrumentType(s string) (InstrumentType, error) {
 	switch s {
 	case "bond":
 		return InstrumentType_INSTRUMENT_TYPE_BOND, nil
