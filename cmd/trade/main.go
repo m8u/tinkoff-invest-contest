@@ -47,6 +47,8 @@ func runServer() {
 		"./web/templates/create_sandbox_account.html",
 		"./web/templates/bot_log.html",
 		"./web/templates/bot_description.html",
+		"./web/templates/combat_accounts.html",
+		"./web/templates/sandbox_accounts.html",
 	)
 
 	router.POST("/api/bots/Create", api.CreateBot)
@@ -58,6 +60,10 @@ func runServer() {
 	router.GET("/api/strategies/GetDefaults", api.GetStrategyDefaults)
 
 	router.POST("/api/accounts/Create", api.CreateSandboxAccount)
+	router.POST("/api/accounts/Remove", api.RemoveSandboxAccount)
+	router.GET("/api/accounts/GetCombatAccounts", api.GetCombatAccounts)
+	router.GET("/api/accounts/GetSandboxAccounts", api.GetSandboxAccounts)
+
 	router.GET("/ws/botlog", botlog.Echo)
 
 	router.GET("/botcontrols", uihandlers.BotControls)
@@ -65,6 +71,8 @@ func runServer() {
 	router.GET("/createsandboxaccount", uihandlers.CreateSandboxAccountForm)
 	router.GET("/botlog", uihandlers.BotLogConsole)
 	router.GET("/botdesc", uihandlers.BotDescription)
+	router.GET("/combataccounts", uihandlers.CombatAccounts)
+	router.GET("/sandboxaccounts", uihandlers.SandboxAccounts)
 
 	log.Fatalln(router.Run())
 }

@@ -80,3 +80,7 @@ func (strategy *strategy) GetYAML() string {
 	utils.MaybeCrash(err)
 	return string(bytes)
 }
+
+func (strategy *strategy) GetName() string {
+	return "Bollinger Bands (R)"
+}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestTradeEnv_DoOrder(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true, 0)
+	e := New(utils.GetSandboxToken(), true)
 	type args struct {
 		figi           string
 		instrumentType utils.InstrumentType

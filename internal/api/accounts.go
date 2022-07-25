@@ -31,3 +31,24 @@ func CreateSandboxAccount(c *gin.Context) {
 		}{accountId},
 	))
 }
+
+func RemoveSandboxAccount(c *gin.Context) {
+	id := c.Query("id")
+	app.SandboxEnv.RemoveSandboxAccount(id)
+}
+
+func GetCombatAccounts(c *gin.Context) {
+	_, _ = c.Writer.WriteString(marshalResponse(
+		http.StatusOK,
+		"",
+		app.CombatEnv.GetAccountsPayload(),
+	))
+}
+
+func GetSandboxAccounts(c *gin.Context) {
+	_, _ = c.Writer.WriteString(marshalResponse(
+		http.StatusOK,
+		"",
+		app.SandboxEnv.GetAccountsPayload(),
+	))
+}

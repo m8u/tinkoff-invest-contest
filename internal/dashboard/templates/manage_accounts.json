@@ -1,0 +1,173 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "dashboard",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 15,
+        "w": 17,
+        "x": 0,
+        "y": 0
+      },
+      "header_js": "{}",
+      "method": "iframe",
+      "mode": "html",
+      "params_js": "{\n}",
+      "request": "http",
+      "responseType": "text",
+      "showErrors": true,
+      "showTime": false,
+      "showTimeFormat": "LTS",
+      "showTimeValue": "request",
+      "skipSameURL": true,
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A"
+        }
+      ],
+      "templateResponse": true,
+      "title": "Combat accounts",
+      "type": "ryantxu-ajax-panel",
+      "url": "http://<host>:<port>/combataccounts",
+      "withCredentials": false
+    },
+    {
+      "datasource": {
+        "type": "dashboard",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 0,
+        "y": 15
+      },
+      "header_js": "{}",
+      "method": "iframe",
+      "mode": "html",
+      "params_js": "{\n}",
+      "request": "http",
+      "responseType": "text",
+      "showErrors": false,
+      "showTime": false,
+      "showTimeFormat": "LTS",
+      "showTimeValue": "request",
+      "skipSameURL": false,
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A"
+        }
+      ],
+      "templateResponse": true,
+      "title": "Create sandbox account",
+      "transparent": true,
+      "type": "ryantxu-ajax-panel",
+      "url": "http://<host>:<port>/createsandboxaccount",
+      "withCredentials": false
+    },
+    {
+      "datasource": {
+        "type": "Dashboard",
+        "uid": "-- Dashboard --"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 17,
+        "x": 7,
+        "y": 15
+      },
+      "header_js": "{}",
+      "method": "iframe",
+      "mode": "html",
+      "params_js": "{\n}",
+      "request": "http",
+      "responseType": "text",
+      "showErrors": true,
+      "showTime": false,
+      "showTimeFormat": "LTS",
+      "showTimeValue": "request",
+      "skipSameURL": true,
+      "targets": [
+        {
+          "datasource": {
+            "type": "datasource",
+            "uid": "-- Dashboard --"
+          },
+          "refId": "A"
+        }
+      ],
+      "templateResponse": true,
+      "title": "Sandbox accounts",
+      "type": "ryantxu-ajax-panel",
+      "url": "http://<host>:<port>/sandboxaccounts",
+      "withCredentials": false
+    }
+  ],
+  "refresh": "1s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1s",
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "Manage accounts",
+  "version": 86,
+  "weekStart": ""
+}

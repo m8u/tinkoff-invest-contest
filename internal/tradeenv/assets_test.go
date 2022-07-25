@@ -7,7 +7,7 @@ import (
 )
 
 func TestTradeEnv_CalculateLotsCanAfford(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true, 0)
+	e := New(utils.GetSandboxToken(), true)
 	type args struct {
 		direction      investapi.OrderDirection
 		maxDealValue   float64
@@ -49,7 +49,7 @@ func TestTradeEnv_CalculateLotsCanAfford(t *testing.T) {
 }
 
 func TestTradeEnv_CalculateMaxDealValue(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true, 0)
+	e := New(utils.GetSandboxToken(), true)
 	e.CreateSandboxAccount(map[string]float64{"rub": 10000, "usd": 0})
 
 	type args struct {
@@ -101,7 +101,7 @@ func TestTradeEnv_CalculateMaxDealValue(t *testing.T) {
 }
 
 func TestTradeEnv_GetLotsHave(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true, 0)
+	e := New(utils.GetSandboxToken(), true)
 	e.CreateSandboxAccount(map[string]float64{"rub": 100000, "usd": 0})
 	type args struct {
 		figi           string

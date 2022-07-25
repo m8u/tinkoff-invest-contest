@@ -6,7 +6,7 @@ import (
 )
 
 func TestTradeEnv_CreateSandboxAccount(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true, 0)
+	e := New(utils.GetSandboxToken(), true)
 	type args struct {
 		money map[string]float64
 	}
@@ -48,7 +48,7 @@ func TestTradeEnv_CreateSandboxAccount(t *testing.T) {
 }
 
 func TestTradeEnv_GetUnoccupiedAccount(t *testing.T) {
-	e := New(utils.GetSandboxToken(), true, 0)
+	e := New(utils.GetSandboxToken(), true)
 	type args struct {
 		currency string
 	}

@@ -19,7 +19,8 @@ var (
 )
 
 func init() {
-	SandboxEnv = tradeenv.New(utils.GetSandboxToken(), true, utils.Fees[utils.Trader])
+	SandboxEnv = tradeenv.New(utils.GetSandboxToken(), true)
+	CombatEnv = tradeenv.New(utils.GetCombatToken(), false)
 	Bots = &botsTable{
 		Table: make(map[string]bots.Bot),
 	}

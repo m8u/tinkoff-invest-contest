@@ -55,3 +55,11 @@ func BotDescription(c *gin.Context) {
 	}{desc}
 	c.HTML(http.StatusOK, "bot_description.html", templateArgs)
 }
+
+func CombatAccounts(c *gin.Context) {
+	c.HTML(http.StatusOK, "combat_accounts.html", nil)
+}
+
+func SandboxAccounts(c *gin.Context) {
+	c.HTML(http.StatusOK, "sandbox_accounts.html", nil)
+}

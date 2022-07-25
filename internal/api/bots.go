@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -13,22 +12,6 @@ import (
 )
 
 var botId int64
-
-type response struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
-	Payload any    `json:"payload"`
-}
-
-func marshalResponse(status int, message string, payload ...any) string {
-	bytes, err := json.Marshal(response{
-		Status:  status,
-		Message: message,
-		Payload: payload,
-	})
-	utils.MaybeCrash(err)
-	return string(bytes)
-}
 
 func CreateBot(c *gin.Context) {
 	args := struct {
@@ -59,9 +42,6 @@ func CreateBot(c *gin.Context) {
 		tradeEnv = app.SandboxEnv
 		fee = args.Fee / 100
 	} else {
-		if app.CombatEnv == nil {
-			app.CombatEnv = tradeenv.New(utils.GetCombatToken(), false, 0)
-		}
 		tradeEnv = app.CombatEnv
 		fee = tradeEnv.CombatFee
 	}

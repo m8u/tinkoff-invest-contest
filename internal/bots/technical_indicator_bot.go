@@ -270,7 +270,13 @@ func (bot *TechnicalIndicatorBot) GetYAML() string {
 		Fee:            bot.fee,
 		Window:         bot.window,
 		CandleInterval: utils.CandleIntervalToString(bot.candleInterval),
-		Strategy:       bot.strategy.GetYAML(),
+		Strategy: struct {
+			Name   string `yaml:"Name"`
+			Params any    `yaml:"Params"`
+		}{
+			Name:   bot.strategy.GetName(),
+			Params: bot.strategy.GetYAML(),
+		},
 	}
 	bytes, err := yaml.Marshal(obj)
 	utils.MaybeCrash(err)

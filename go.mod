@@ -3,7 +3,6 @@ module tinkoff-invest-contest
 go 1.18
 
 require (
-	github.com/go-echarts/go-echarts/v2 v2.2.4
 	github.com/grafana/grafana-api-golang-client v0.7.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/joho/godotenv v1.4.0

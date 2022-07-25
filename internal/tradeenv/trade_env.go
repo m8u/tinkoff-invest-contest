@@ -18,12 +18,11 @@ type TradeEnv struct {
 	Channels map[string]MarketDataChannelStack
 }
 
-// New creates a new TradeEnv. If isSandbox = false, combatFee is ignored
-func New(token string, isSandbox bool, combatFee float64) *TradeEnv {
+// New creates a new TradeEnv
+func New(token string, isSandbox bool) *TradeEnv {
 	tradeEnv := &TradeEnv{
 		token:            token,
 		isSandbox:        isSandbox,
-		CombatFee:        combatFee,
 		accountsRegistry: newAccountsRegistry(),
 		Client:           client.NewClient(token),
 		Channels:         make(map[string]MarketDataChannelStack),

@@ -1,6 +1,9 @@
 package tradeenv
 
 import (
+	"log"
+	"sort"
+	"strings"
 	"sync"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -74,6 +77,16 @@ func (e *TradeEnv) CreateSandboxAccount(money map[string]float64) (accountId str
 	return
 }
 
+func (e *TradeEnv) RemoveSandboxAccount(id string) {
+	if _, ok := e.accountsRegistry.accounts[id]; ok {
+		e.accountsRegistry.mu.Lock()
+		delete(e.accountsRegistry.accounts, id)
+		e.accountsRegistry.mu.Unlock()
+
+		_, _ = e.Client.CloseSandboxAccount(id)
+	}
+}
+
 func (e *TradeEnv) loadCombatAccounts() {
 	accounts, err := e.Client.GetAccounts()
 	utils.MaybeCrash(err)
@@ -82,10 +95,50 @@ func (e *TradeEnv) loadCombatAccounts() {
 		utils.MaybeCrash(err)
 		e.accountsRegistry.accounts[account.Id] = make(map[string]*moneyPosition)
 		for _, position := range positions.Money {
+			log.Println(utils.MoneyValueToFloat(position))
 			e.accountsRegistry.accounts[account.Id][position.Currency] = &moneyPosition{
 				amount:   utils.MoneyValueToFloat(position),
 				occupied: false,
 			}
 		}
 	}
+}
+
+type accountsPayloadEntry struct {
+	Id          string  `json:"id"`
+	RUBAmount   float64 `json:"rubAmount"`
+	USDAmount   float64 `json:"usdAmount"`
+	RUBOccupied bool    `json:"rubOccupied"`
+	USDOccupied bool    `json:"usdOccupied"`
+}
+
+func (e *TradeEnv) GetAccountsPayload() any {
+	var accounts []accountsPayloadEntry
+	for id, account := range e.accountsRegistry.accounts {
+		rubPosition, ok := account["rub"]
+		if !ok {
+			rubPosition = &moneyPosition{
+				amount:   0,
+				occupied: false,
+			}
+		}
+		usdPosition, ok := account["usd"]
+		if !ok {
+			usdPosition = &moneyPosition{
+				amount:   0,
+				occupied: false,
+			}
+		}
+		accounts = append(accounts, accountsPayloadEntry{
+			Id:          id,
+			RUBAmount:   rubPosition.amount,
+			USDAmount:   usdPosition.amount,
+			RUBOccupied: rubPosition.occupied,
+			USDOccupied: usdPosition.occupied,
+		})
+	}
+	sort.Slice(accounts, func(i, j int) bool {
+		return strings.Compare(accounts[i].Id, accounts[j].Id) == -1
+	})
+	return accounts
 }

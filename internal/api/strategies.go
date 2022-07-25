@@ -9,7 +9,7 @@ import (
 
 func GetStrategiesNames(c *gin.Context) {
 	s, _ := json.Marshal(strategies.Names)
-	c.Writer.WriteString(string(s))
+	_, _ = c.Writer.WriteString(string(s))
 }
 
 func GetStrategyDefaults(c *gin.Context) {
@@ -18,5 +18,5 @@ func GetStrategyDefaults(c *gin.Context) {
 	if defaults, ok := tistrategy.DefaultsJSON[name]; ok {
 		s = defaults()
 	} // else if defaults, ok := obstrategy.DefaultsJSON[name]; ok {
-	c.Writer.WriteString(s)
+	_, _ = c.Writer.WriteString(s)
 }

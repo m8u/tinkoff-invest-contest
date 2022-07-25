@@ -9,6 +9,7 @@ type TechnicalIndicatorStrategy interface {
 	GetTradeSignal(candles []*investapi.HistoricCandle) (*utils.TradeSignal, map[string]any)
 	GetOutputKeys() []string
 	GetYAML() string
+	GetName() string
 }
 
 var JSONConstructors map[string]func(string) (TechnicalIndicatorStrategy, error)
