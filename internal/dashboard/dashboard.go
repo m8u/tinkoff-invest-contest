@@ -7,6 +7,7 @@ import (
 	grafana "github.com/grafana/grafana-api-golang-client"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
@@ -70,7 +71,7 @@ func init() {
 	}
 	botsFolder, _ = client.NewFolder("Bots")
 
-	_ = addUtilityDashboard("internal/dashboard/templates/create_bot.json")
+	_ = addUtilityDashboard("internal/dashboard/templates/manage_bots.json")
 	_ = addUtilityDashboard("internal/dashboard/templates/manage_accounts.json")
 
 	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
@@ -82,6 +83,7 @@ func addUtilityDashboard(templatePath string) error {
 	modelStr := string(template)
 	modelStr = strings.ReplaceAll(modelStr, "<host>", os.Getenv("HOST"))
 	modelStr = strings.ReplaceAll(modelStr, "<port>", os.Getenv("PORT"))
+	modelStr = strings.ReplaceAll(modelStr, "<bots_folder_id>", strconv.FormatInt(botsFolder.ID, 10))
 	var model map[string]any
 	_ = json.Unmarshal([]byte(modelStr), &model)
 	dashboard := grafana.Dashboard{
@@ -132,8 +134,8 @@ func RemoveBotDashboards() {
 	}
 }
 
-func AnnotateOrder(botId string, direction investapi.OrderDirection, quantity int64, price float64, currency string) {
-	client.NewAnnotation(&grafana.Annotation{
+func AnnotateOrder(botId string, direction investapi.OrderDirection, quantity int64, price float64, currency string) error {
+	_, err := client.NewAnnotation(&grafana.Annotation{
 		DashboardID: botDashboards[botId],
 		PanelID:     0,
 		Text: fmt.Sprintf("%v %v for %v %v",
@@ -144,4 +146,5 @@ func AnnotateOrder(botId string, direction investapi.OrderDirection, quantity in
 		),
 		Tags: []string{utils.OrderDirectionToString(direction)},
 	})
+	return err
 }

@@ -181,13 +181,17 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					log.Printf("%v order error: %v", bot.logPrefix(), utils.PrettifyError(err))
 					return err
 				}
-				dashboard.AnnotateOrder(
+				err = dashboard.AnnotateOrder(
 					bot.id,
 					signal.Direction,
 					lots*int64(instrument.GetLot()),
 					utils.QuotationToFloat(currentCandle.Close),
 					instrument.GetCurrency(),
 				)
+				if err != nil {
+					log.Println(bot.logPrefix(), utils.PrettifyError(err))
+					return err
+				}
 
 				if shouldUnoccupyAccount {
 					bot.tradeEnv.SetAccountUnoccupied(bot.occupiedAccountId, instrument.GetCurrency())

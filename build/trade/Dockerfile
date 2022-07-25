@@ -10,4 +10,4 @@ COPY .env .
 RUN go build -o trade ./cmd/trade/main.go
 
 STOPSIGNAL SIGINT
-CMD ["./trade", "--mode",  "sandbox"]
+CMD ["./trade"]

@@ -36,7 +36,7 @@ func NewFromJSON(s string) (tistrategy.TechnicalIndicatorStrategy, error) {
 func GetDefaultsJSON() string {
 	defaults := params{
 		Coef:           3,
-		PointDeviation: 0.001,
+		PointDeviation: 0.0005,
 	}
 	bytes, err := json.MarshalIndent(&defaults, "", "  ")
 	utils.MaybeCrash(err)
