@@ -52,7 +52,8 @@ func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*
 
 	currentCandle := candles[len(candles)-1]
 	var signal *utils.TradeSignal
-	if tistrategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, strategy.pointDeviation) {
+	if tistrategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, strategy.pointDeviation) &&
+		utils.QuotationToFloat(currentCandle.Close) < ((lowerBound+upperBound)/2) {
 		// Сигнал к покупке
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_BUY}
 

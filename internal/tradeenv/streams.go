@@ -3,7 +3,72 @@ package tradeenv
 import (
 	"log"
 	"tinkoff-invest-contest/internal/client/investapi"
+	"tinkoff-invest-contest/internal/utils"
 )
+
+type subscriptions struct {
+	candles   []investapi.CandleInstrument
+	info      []investapi.InfoInstrument
+	orderBook []investapi.OrderBookInstrument
+}
+
+func (e *TradeEnv) SubscribeCandles(figi string, interval investapi.SubscriptionInterval) {
+	err := e.Client.SubscribeCandles(figi, interval)
+	utils.MaybeCrash(err)
+
+	e.Mu.Lock()
+	e.subscriptions.candles = append(e.subscriptions.candles, investapi.CandleInstrument{
+		Figi:     figi,
+		Interval: interval,
+	})
+	e.Mu.Unlock()
+}
+
+func (e *TradeEnv) SubscribeInfo(figi string) {
+	err := e.Client.SubscribeInfo(figi)
+	utils.MaybeCrash(err)
+
+	e.Mu.Lock()
+	e.subscriptions.info = append(e.subscriptions.info, investapi.InfoInstrument{
+		Figi: figi,
+	})
+	e.Mu.Unlock()
+}
+
+func (e *TradeEnv) SubscribeOrderBook(figi string, depth int32) {
+	err := e.Client.SubscribeOrderBook(figi, depth)
+	utils.MaybeCrash(err)
+
+	e.Mu.Lock()
+	e.subscriptions.orderBook = append(e.subscriptions.orderBook, investapi.OrderBookInstrument{
+		Figi:  figi,
+		Depth: depth,
+	})
+	e.Mu.Unlock()
+}
+
+func (e *TradeEnv) handleResubscribe() {
+	for i := 0; i < len(e.subscriptions.candles); i++ {
+		err := e.Client.SubscribeCandles(
+			e.subscriptions.candles[i].Figi,
+			e.subscriptions.candles[i].Interval,
+		)
+		utils.MaybeCrash(err)
+	}
+	for i := 0; i < len(e.subscriptions.info); i++ {
+		err := e.Client.SubscribeInfo(
+			e.subscriptions.info[i].Figi,
+		)
+		utils.MaybeCrash(err)
+	}
+	for i := 0; i < len(e.subscriptions.orderBook); i++ {
+		err := e.Client.SubscribeOrderBook(
+			e.subscriptions.orderBook[i].Figi,
+			e.subscriptions.orderBook[i].Depth,
+		)
+		utils.MaybeCrash(err)
+	}
+}
 
 func (e *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {
 	subscribeInfoResp := event.GetSubscribeInfoResponse()
@@ -51,9 +116,11 @@ type MarketDataChannelStack struct {
 }
 
 func (e *TradeEnv) InitChannels(figi string) {
+	e.Mu.Lock()
 	e.Channels[figi] = MarketDataChannelStack{
 		TradingStatus: make(chan *investapi.TradingStatus),
 		Candle:        make(chan *investapi.Candle),
 		OrderBook:     make(chan *investapi.OrderBook),
 	}
+	e.Mu.Unlock()
 }

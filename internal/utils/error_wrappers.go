@@ -17,7 +17,7 @@ func MaybeCrash(err error) {
 }
 
 func PrettifyError(err error, callerData ...string) string {
-	if callerData[0] == "" {
+	if len(callerData) > 0 {
 		_, filename, line, _ := runtime.Caller(1)
 		return fmt.Sprintf("[error] %s:%d %v", filename, line, err)
 	} else {

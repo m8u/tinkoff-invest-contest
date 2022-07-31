@@ -28,6 +28,11 @@ func init() {
 		log.Fatalf("unable to connect to database: %v", err)
 	}
 
+	_, err = db.Exec("DROP SCHEMA public CASCADE")
+	_, _ = db.Exec("CREATE SCHEMA public")
+	_, _ = db.Exec("GRANT ALL ON SCHEMA public TO postgres")
+	_, _ = db.Exec("GRANT ALL ON SCHEMA public TO public")
+	utils.MaybeCrash(err)
 }
 
 func ensureDBInitialized() {

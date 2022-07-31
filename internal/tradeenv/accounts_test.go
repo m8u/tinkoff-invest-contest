@@ -24,7 +24,7 @@ func TestTradeEnv_CreateSandboxAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e.CreateSandboxAccount(tt.args.money)
-			for id, positions1 := range e.accountsRegistry.accounts {
+			for id, positions1 := range e.accounts {
 				positions2, err := e.Client.GetSandboxPositions(id)
 				if err != nil {
 					t.Fatal(err)
@@ -40,7 +40,7 @@ func TestTradeEnv_CreateSandboxAccount(t *testing.T) {
 					}
 				}
 			}
-			for id := range e.accountsRegistry.accounts {
+			for id := range e.accounts {
 				_, _ = e.Client.CloseSandboxAccount(id)
 			}
 		})
@@ -79,14 +79,14 @@ func TestTradeEnv_GetUnoccupiedAccount(t *testing.T) {
 				e.CreateSandboxAccount(money)
 			}
 
-			gotAccountId, unlock := e.GetUnoccupiedAccount(tt.args.currency)
-			if e.accountsRegistry.accounts[gotAccountId][tt.args.currency].amount != maxMoney {
+			gotAccountId, unlock, _ := e.GetUnoccupiedAccount(tt.args.currency)
+			if e.accounts[gotAccountId][tt.args.currency].amount != maxMoney {
 				t.Errorf("GetUnoccupiedAccount() got %v = %v, want %v = %v",
-					tt.args.currency, e.accountsRegistry.accounts[gotAccountId][tt.args.currency].amount,
+					tt.args.currency, e.accounts[gotAccountId][tt.args.currency].amount,
 					tt.args.currency, maxMoney)
 			}
 			unlock()
-			for id := range e.accountsRegistry.accounts {
+			for id := range e.accounts {
 				_, _ = e.Client.CloseSandboxAccount(id)
 			}
 		})

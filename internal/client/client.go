@@ -360,14 +360,17 @@ func (c *Client) PostSandboxOrder(figi string, quantity int64, price float64, di
 	return postOrderResp, nil
 }
 
-func (c *Client) RunMarketDataStreamLoop(handler func(marketDataResp *investapi.MarketDataResponse)) error {
-	utils.WaitForInternetConnection()
+func (c *Client) RunMarketDataStreamLoop(handleResponse func(marketDataResp *investapi.MarketDataResponse),
+	resubscribe func()) {
+	var err error
+	var resp *investapi.MarketDataResponse
 	for {
-		marketDataResp, err := c.marketDataStream.Recv()
+		utils.WaitForInternetConnection()
 		if err != nil {
-			return err
+			resubscribe()
 		}
-		handler(marketDataResp)
+		resp, err = c.marketDataStream.Recv()
+		handleResponse(resp)
 	}
 }
 

@@ -6,7 +6,7 @@ import (
 )
 
 func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.OrderDirection,
-	instrument utils.InstrumentInterface, price *investapi.Quotation, allowMargin bool) (float64, error) {
+	instrument utils.InstrumentInterface, price *investapi.Quotation, allowMargin bool) float64 {
 	var positions *investapi.PositionsResponse
 	var err error
 	if e.isSandbox {
@@ -14,9 +14,7 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 	} else {
 		positions, err = e.Client.GetSandboxPositions(accountId)
 	}
-	if err != nil {
-		return 0, err
-	}
+	utils.MaybeCrash(err)
 
 	var moneyHave float64
 	var lotsHave int64
@@ -25,18 +23,16 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 			moneyHave = utils.MoneyValueToFloat(money)
 		}
 	}
-	if len(positions.Securities) > 0 {
-		lotsHave = positions.Securities[0].Balance / int64(instrument.GetLot())
-	} else {
-		lotsHave = 0
+	for _, position := range positions.Securities {
+		if position.Figi == instrument.GetFigi() {
+			lotsHave = position.Balance / int64(instrument.GetLot())
+		}
 	}
 
 	var marginAttributes *investapi.GetMarginAttributesResponse
 	if !e.isSandbox {
 		marginAttributes, err = e.Client.GetMarginAttributes(accountId)
-		if err != nil {
-			return 0, err
-		}
+		utils.MaybeCrash(err)
 	}
 
 	var maxDealValue float64
@@ -59,7 +55,7 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 			maxDealValue = float64(lotsHave) * float64(instrument.GetLot()) * utils.QuotationToFloat(price)
 		}
 	}
-	return maxDealValue, nil
+	return maxDealValue
 }
 
 func (e *TradeEnv) CalculateLotsCanAfford(direction investapi.OrderDirection, maxDealValue float64,
@@ -79,7 +75,7 @@ func (e *TradeEnv) CalculateLotsCanAfford(direction investapi.OrderDirection, ma
 	return lots
 }
 
-func (e *TradeEnv) GetLotsHave(accountId string, instrument utils.InstrumentInterface) (lots int64, err error) { // ???TODO: with expectation that it can return negative quantity for short position
+func (e *TradeEnv) GetLotsHave(accountId string, instrument utils.InstrumentInterface) (lots int64, err error) { // TODO: with expectation that it can return negative quantity for short position
 	portfolio, err := e.Client.WrapGetPortfolio(e.isSandbox, accountId)
 	if err != nil {
 		return 0, err

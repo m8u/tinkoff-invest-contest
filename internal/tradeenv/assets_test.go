@@ -83,19 +83,15 @@ func TestTradeEnv_CalculateMaxDealValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			instrument, _ := e.Client.InstrumentByFigi(tt.args.figi, tt.args.instrumentType)
-			accountId, unlock := e.GetUnoccupiedAccount(instrument.GetCurrency())
-			got, err := e.CalculateMaxDealValue(accountId, tt.args.direction, instrument, tt.args.price, tt.args.allowMargin)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CalculateMaxDealValue() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			accountId, unlock, _ := e.GetUnoccupiedAccount(instrument.GetCurrency())
+			got := e.CalculateMaxDealValue(accountId, tt.args.direction, instrument, tt.args.price, tt.args.allowMargin)
 			if got != tt.want {
 				t.Errorf("CalculateMaxDealValue() got = %v, want %v", got, tt.want)
 			}
 			unlock()
 		})
 	}
-	for id := range e.accountsRegistry.accounts {
+	for id := range e.accounts {
 		_, _ = e.Client.CloseSandboxAccount(id)
 	}
 }
@@ -126,7 +122,7 @@ func TestTradeEnv_GetLotsHave(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			instrument, _ := e.Client.InstrumentByFigi(tt.args.figi, tt.args.instrumentType)
-			accountId, unlock := e.GetUnoccupiedAccount(instrument.GetCurrency())
+			accountId, unlock, _ := e.GetUnoccupiedAccount(instrument.GetCurrency())
 			_ = e.DoOrder(tt.args.figi, tt.wantLots, utils.FloatToQuotation(1000),
 				investapi.OrderDirection_ORDER_DIRECTION_BUY, accountId, investapi.OrderType_ORDER_TYPE_MARKET)
 			gotLots, err := e.GetLotsHave(accountId, instrument)
@@ -140,7 +136,7 @@ func TestTradeEnv_GetLotsHave(t *testing.T) {
 			unlock()
 		})
 	}
-	for id := range e.accountsRegistry.accounts {
+	for id := range e.accounts {
 		_, _ = e.Client.CloseSandboxAccount(id)
 	}
 }

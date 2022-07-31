@@ -26,8 +26,10 @@ type TechnicalIndicatorBot struct {
 	id   string
 	name string
 
-	tradeEnv          *tradeenv.TradeEnv
-	occupiedAccountId string
+	tradeEnv            *tradeenv.TradeEnv
+	occupiedAccountId   string
+	lastDiscardTS       time.Time
+	prevSignalDirection investapi.OrderDirection
 
 	strategy tistrategy.TechnicalIndicatorStrategy
 
@@ -64,8 +66,6 @@ func NewTechnicalIndicatorBot(id string, name string, tradeEnv *tradeenv.TradeEn
 	return bot
 }
 
-var prevDirection investapi.OrderDirection
-
 func (bot *TechnicalIndicatorBot) loop() error {
 	currentTimestamp := time.Time{}
 
@@ -79,9 +79,13 @@ func (bot *TechnicalIndicatorBot) loop() error {
 	}
 
 	for !appstate.ShouldExit && !bot.removing {
+		bot.tradeEnv.Mu.RLock() // TODO: mutex probably should not be exported
+		candleChan := bot.tradeEnv.Channels[bot.figi].Candle
+		bot.tradeEnv.Mu.RUnlock()
 		select {
 		// Get candle from stream
-		case currentCandle := <-bot.tradeEnv.Channels[bot.figi].Candle:
+		case currentCandle := <-candleChan:
+			shouldReleaseAccount := false
 			if currentCandle.Time.AsTime() != currentTimestamp {
 				// On a new candle, get historic candles in amount of >= window
 				candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
@@ -91,14 +95,10 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				}
 				// Trim excessive candles
 				candles = candles[len(candles)-(bot.window-1):]
-				go func() {
-					db.InsertCandles(bot.id, candles)
-				}()
+				db.InsertCandles(bot.id, candles)
 				currentTimestamp = currentCandle.Time.AsTime()
 			}
-			go func() {
-				db.UpdateLastCandle(bot.id, currentCandle)
-			}()
+			go db.UpdateLastCandle(bot.id, currentCandle)
 
 			// Get trade signal
 			signal, indicatorValues := bot.strategy.GetTradeSignal(
@@ -113,43 +113,35 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				),
 			)
 			indicatorValues["time"] = currentCandle.Time.AsTime()
-			go func() {
-				db.AddIndicatorValues(bot.id, indicatorValues)
-			}()
+			go db.AddIndicatorValues(bot.id, indicatorValues)
 
-			if signal != nil {
+			if signal != nil && time.Now().After(bot.lastDiscardTS.Add(time.Minute)) {
 				// Get unoccupied account or use the existing one,
 				// and determine lot quantity for the deal (either buy or sell)
 				var lots int64
-				shouldUnoccupyAccount := false
 				if bot.occupiedAccountId == "" {
-					accountId, unlock := bot.tradeEnv.GetUnoccupiedAccount(instrument.GetCurrency())
+					accountId, discard, unlock := bot.tradeEnv.GetUnoccupiedAccount(instrument.GetCurrency())
 					if accountId == "" {
-						unlock()
 						continue
 					}
-					maxDealValue, err := bot.tradeEnv.CalculateMaxDealValue(
+					maxDealValue := bot.tradeEnv.CalculateMaxDealValue(
 						accountId,
 						signal.Direction,
 						instrument,
 						currentCandle.Close,
 						bot.allowMargin,
 					)
-					if err != nil {
-						log.Println(bot.logPrefix(), utils.PrettifyError(err))
-						unlock()
-						return err
-					}
 					lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Direction, maxDealValue, instrument, currentCandle.Close, bot.fee)
 					if lots == 0 {
+						bot.lastDiscardTS = time.Now()
+						discard()
 						unlock()
 						continue
 					}
-					bot.tradeEnv.SetAccountOccupied(accountId, instrument.GetCurrency())
 					unlock()
 					bot.occupiedAccountId = accountId
-				} else if signal.Direction != prevDirection {
-					shouldUnoccupyAccount = true
+				} else if signal.Direction != bot.prevSignalDirection {
+					shouldReleaseAccount = true
 					lots, err = bot.tradeEnv.GetLotsHave(bot.occupiedAccountId, instrument)
 					if err != nil {
 						log.Println(bot.logPrefix(), utils.PrettifyError(err))
@@ -169,6 +161,7 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					instrument.GetCurrency(),
 					bot.occupiedAccountId,
 				)
+
 				err := bot.tradeEnv.DoOrder(
 					bot.figi,
 					lots,
@@ -193,12 +186,11 @@ func (bot *TechnicalIndicatorBot) loop() error {
 					return err
 				}
 
-				if shouldUnoccupyAccount {
-					bot.tradeEnv.SetAccountUnoccupied(bot.occupiedAccountId, instrument.GetCurrency())
+				if shouldReleaseAccount {
+					bot.tradeEnv.ReleaseAccount(bot.occupiedAccountId, instrument.GetCurrency())
 					bot.occupiedAccountId = ""
 				}
-
-				prevDirection = signal.Direction
+				bot.prevSignalDirection = signal.Direction
 			}
 
 		default:

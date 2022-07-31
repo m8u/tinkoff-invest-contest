@@ -34,7 +34,7 @@ func TestTradeEnv_DoOrder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e.CreateSandboxAccount(map[string]float64{"rub": 100000, "usd": 10000})
 			instrument, _ := e.Client.InstrumentByFigi(tt.args.figi, tt.args.instrumentType)
-			accountId, unlock := e.GetUnoccupiedAccount(instrument.GetCurrency())
+			accountId, unlock, _ := e.GetUnoccupiedAccount(instrument.GetCurrency())
 			err := e.DoOrder(tt.args.figi, tt.args.quantity, tt.args.price,
 				investapi.OrderDirection_ORDER_DIRECTION_BUY, accountId, investapi.OrderType_ORDER_TYPE_MARKET)
 			if (err != nil) != tt.wantErr {
