@@ -16,7 +16,7 @@ type TradeEnv struct {
 	Mu            sync.RWMutex
 	accounts      map[string]map[string]*moneyPosition
 	subscriptions *subscriptions
-	Channels      map[string]MarketDataChannelStack
+	Channels      map[string]*MarketDataChannelStack
 
 	Client *client.Client
 }
@@ -27,7 +27,7 @@ func New(token string, isSandbox bool) *TradeEnv {
 		isSandbox:     isSandbox,
 		accounts:      make(map[string]map[string]*moneyPosition),
 		subscriptions: new(subscriptions),
-		Channels:      make(map[string]MarketDataChannelStack),
+		Channels:      make(map[string]*MarketDataChannelStack),
 		Client:        client.NewClient(token),
 	}
 	tradeEnv.Client.InitMarketDataStream()

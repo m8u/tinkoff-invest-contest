@@ -183,7 +183,6 @@ func (bot *TechnicalIndicatorBot) loop() error {
 				)
 				if err != nil {
 					log.Println(bot.logPrefix(), utils.PrettifyError(err))
-					return err
 				}
 
 				if shouldReleaseAccount {

@@ -117,7 +117,7 @@ type MarketDataChannelStack struct {
 
 func (e *TradeEnv) InitChannels(figi string) {
 	e.Mu.Lock()
-	e.Channels[figi] = MarketDataChannelStack{
+	e.Channels[figi] = &MarketDataChannelStack{
 		TradingStatus: make(chan *investapi.TradingStatus),
 		Candle:        make(chan *investapi.Candle),
 		OrderBook:     make(chan *investapi.OrderBook),
