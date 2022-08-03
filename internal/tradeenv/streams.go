@@ -16,35 +16,35 @@ func (e *TradeEnv) SubscribeCandles(figi string, interval investapi.Subscription
 	err := e.Client.SubscribeCandles(figi, interval)
 	utils.MaybeCrash(err)
 
-	e.Mu.Lock()
+	e.mu.Lock()
 	e.subscriptions.candles = append(e.subscriptions.candles, investapi.CandleInstrument{
 		Figi:     figi,
 		Interval: interval,
 	})
-	e.Mu.Unlock()
+	e.mu.Unlock()
 }
 
 func (e *TradeEnv) SubscribeInfo(figi string) {
 	err := e.Client.SubscribeInfo(figi)
 	utils.MaybeCrash(err)
 
-	e.Mu.Lock()
+	e.mu.Lock()
 	e.subscriptions.info = append(e.subscriptions.info, investapi.InfoInstrument{
 		Figi: figi,
 	})
-	e.Mu.Unlock()
+	e.mu.Unlock()
 }
 
 func (e *TradeEnv) SubscribeOrderBook(figi string, depth int32) {
 	err := e.Client.SubscribeOrderBook(figi, depth)
 	utils.MaybeCrash(err)
 
-	e.Mu.Lock()
+	e.mu.Lock()
 	e.subscriptions.orderBook = append(e.subscriptions.orderBook, investapi.OrderBookInstrument{
 		Figi:  figi,
 		Depth: depth,
 	})
-	e.Mu.Unlock()
+	e.mu.Unlock()
 }
 
 func (e *TradeEnv) handleResubscribe() {
@@ -116,11 +116,17 @@ type MarketDataChannelStack struct {
 }
 
 func (e *TradeEnv) InitChannels(figi string) {
-	e.Mu.Lock()
+	e.mu.Lock()
 	e.Channels[figi] = &MarketDataChannelStack{
 		TradingStatus: make(chan *investapi.TradingStatus),
 		Candle:        make(chan *investapi.Candle),
 		OrderBook:     make(chan *investapi.OrderBook),
 	}
-	e.Mu.Unlock()
+	e.mu.Unlock()
+}
+
+func (e *TradeEnv) GetChannels(figi string) *MarketDataChannelStack {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.Channels[figi]
 }

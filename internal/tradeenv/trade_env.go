@@ -13,7 +13,7 @@ type TradeEnv struct {
 	isSandbox bool
 	CombatFee float64
 
-	Mu            sync.RWMutex
+	mu            sync.RWMutex
 	accounts      map[string]map[string]*moneyPosition
 	subscriptions *subscriptions
 	Channels      map[string]*MarketDataChannelStack

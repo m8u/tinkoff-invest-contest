@@ -79,12 +79,10 @@ func (bot *TechnicalIndicatorBot) loop() error {
 	}
 
 	for !appstate.ShouldExit && !bot.removing {
-		bot.tradeEnv.Mu.RLock() // TODO: mutex probably should not be exported
-		candleChan := bot.tradeEnv.Channels[bot.figi].Candle
-		bot.tradeEnv.Mu.RUnlock()
+		channels := bot.tradeEnv.GetChannels(bot.figi)
 		select {
 		// Get candle from stream
-		case currentCandle := <-candleChan:
+		case currentCandle := <-channels.Candle:
 			shouldReleaseAccount := false
 			if currentCandle.Time.AsTime() != currentTimestamp {
 				// On a new candle, get historic candles in amount of >= window

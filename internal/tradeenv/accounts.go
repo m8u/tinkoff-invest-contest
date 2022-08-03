@@ -18,12 +18,12 @@ type moneyPosition struct {
 // If no account returned - calling any of these is not needed.
 func (e *TradeEnv) GetUnoccupiedAccount(currency string) (accountId string, discard func(), unlock func()) {
 	unlock = func() {
-		e.Mu.Unlock()
+		e.mu.Unlock()
 	}
 	discard = func() {
 		e.accounts[accountId][currency].occupied = false
 	}
-	e.Mu.Lock()
+	e.mu.Lock()
 	var maxMoneyAmount float64
 	for id, moneyPositions := range e.accounts {
 		if !(moneyPositions[currency].occupied) && moneyPositions[currency].amount > maxMoneyAmount {
@@ -42,19 +42,19 @@ func (e *TradeEnv) GetUnoccupiedAccount(currency string) (accountId string, disc
 func (e *TradeEnv) ReleaseAccount(accountId string, currency string) {
 	positions, err := e.Client.WrapGetPositions(e.isSandbox, accountId)
 	utils.MaybeCrash(err)
-	e.Mu.Lock()
+	e.mu.Lock()
 	for _, moneyPosition := range positions.Money {
 		e.accounts[accountId][moneyPosition.Currency].amount = utils.MoneyValueToFloat(moneyPosition)
 	}
 	e.accounts[accountId][currency].occupied = false
-	e.Mu.Unlock()
+	e.mu.Unlock()
 }
 
 func (e *TradeEnv) CreateSandboxAccount(money map[string]float64) (accountId string) {
 	accountResp, err := e.Client.OpenSandboxAccount()
 	utils.MaybeCrash(err)
 	accountId = accountResp.AccountId
-	e.Mu.Lock()
+	e.mu.Lock()
 	e.accounts[accountResp.AccountId] = make(map[string]*moneyPosition)
 	for currency, amount := range money {
 		if amount > 0 {
@@ -66,15 +66,15 @@ func (e *TradeEnv) CreateSandboxAccount(money map[string]float64) (accountId str
 			occupied: false,
 		}
 	}
-	e.Mu.Unlock()
+	e.mu.Unlock()
 	return
 }
 
 func (e *TradeEnv) RemoveSandboxAccount(id string) {
 	if _, ok := e.accounts[id]; ok {
-		e.Mu.Lock()
+		e.mu.Lock()
 		delete(e.accounts, id)
-		e.Mu.Unlock()
+		e.mu.Unlock()
 
 		_, _ = e.Client.CloseSandboxAccount(id)
 	}
@@ -83,7 +83,7 @@ func (e *TradeEnv) RemoveSandboxAccount(id string) {
 func (e *TradeEnv) loadCombatAccounts() {
 	accounts, err := e.Client.GetAccounts()
 	utils.MaybeCrash(err)
-	e.Mu.Lock()
+	e.mu.Lock()
 	for _, account := range accounts {
 		positions, err := e.Client.GetPositions(account.Id)
 		utils.MaybeCrash(err)
@@ -95,7 +95,7 @@ func (e *TradeEnv) loadCombatAccounts() {
 			}
 		}
 	}
-	e.Mu.Unlock()
+	e.mu.Unlock()
 }
 
 type accountsPayloadEntry struct {
