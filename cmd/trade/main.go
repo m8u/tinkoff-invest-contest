@@ -78,7 +78,6 @@ func runServer() {
 }
 
 func main() {
-	appstate.ExitActionsWG.Add(1)
 	_ = godotenv.Load(".env")
 
 	mw := io.MultiWriter(os.Stdout, botlog.Writer)

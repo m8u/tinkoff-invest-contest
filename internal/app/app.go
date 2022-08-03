@@ -2,6 +2,7 @@ package app
 
 import (
 	"sync"
+	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/bots"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
@@ -19,6 +20,7 @@ var (
 )
 
 func init() {
+	appstate.ExitActionsWG.Add(1)
 	SandboxEnv = tradeenv.New(utils.GetSandboxToken(), true)
 	CombatEnv = tradeenv.New(utils.GetCombatToken(), false)
 	Bots = &botsTable{
