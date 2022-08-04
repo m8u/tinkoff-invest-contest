@@ -32,7 +32,7 @@ type Client struct {
 	OrdersStreamService     investapi.OrdersStreamServiceClient
 }
 
-// NewClient создает новый клиент gRPC-интерфейса Tinkoff Invest API
+// NewClient creates a new Tinkoff Invest API gRPC client
 func NewClient(token string) *Client {
 	utils.WaitForInternetConnection()
 	var err error
@@ -56,7 +56,8 @@ func NewClient(token string) *Client {
 	return &client
 }
 
-// InitMarketDataStream инициализирует новый стрим биржевых данных
+// InitMarketDataStream initializes a market data stream.
+// Call it after creating a Client if you need any data from Invest API streams
 func (c *Client) InitMarketDataStream() {
 	var err error
 	c.marketDataStream, err = c.MarketDataStreamService.MarketDataStream(

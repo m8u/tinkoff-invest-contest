@@ -8,7 +8,7 @@ import (
 	"tinkoff-invest-contest/internal/appstate"
 )
 
-// WaitForInternetConnection пингует clients3.google.com, блокируя тред до успешного соединения
+// WaitForInternetConnection pings clients3.google.com, blocking current goroutine until connection successful
 func WaitForInternetConnection() {
 	httpClient := http.Client{Timeout: 5 * time.Second}
 	err := errors.New("")
