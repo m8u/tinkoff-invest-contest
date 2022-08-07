@@ -5,8 +5,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"tinkoff-invest-contest/internal/app"
-	"tinkoff-invest-contest/internal/bots"
-	"tinkoff-invest-contest/internal/strategies/tistrategy"
+	"tinkoff-invest-contest/internal/bot"
+	"tinkoff-invest-contest/internal/strategies/strategy"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -25,6 +25,7 @@ func CreateBot(c *gin.Context) {
 		StrategyConfig string `form:"strategyConfig"`
 		CandleInterval string `form:"candleInterval"`
 		Window         int    `form:"window"`
+		OrderBookDepth int32  `form:"orderBookDepth"`
 	}{}
 
 	err := c.Bind(&args)
@@ -69,10 +70,8 @@ func CreateBot(c *gin.Context) {
 	}
 	name += " #" + id
 
-	// Starting from here, determine strategy type (candles/orderbook) from its name,
-	// then call a function which creates a corresponding bot.
-	if newStrategyFromJSON, ok := tistrategy.JSONConstructors[args.StrategyName]; ok {
-		strategy, err := newStrategyFromJSON(args.StrategyConfig)
+	if newStrategyFromJSON, ok := strategy.JSONConstructors[args.StrategyName]; ok {
+		s, err := newStrategyFromJSON(args.StrategyConfig)
 		if err != nil {
 			_, _ = c.Writer.WriteString(marshalResponse(
 				http.StatusBadRequest,
@@ -90,11 +89,8 @@ func CreateBot(c *gin.Context) {
 		}
 
 		app.Bots.Lock.Lock()
-		app.Bots.Table[id] = bots.NewTechnicalIndicatorBot(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.AllowMargin, fee, strategy)
+		app.Bots.Table[id] = bot.NewTechnicalIndicatorBot(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.OrderBookDepth, args.AllowMargin, fee, s)
 		app.Bots.Lock.Unlock()
-		//} else if newStrategyFromJSON, ok := obstrategy.JSONConstructors[strategyParams.Name]; ok {
-
-		//}
 	} else {
 		_, _ = c.Writer.WriteString(marshalResponse(
 			http.StatusBadRequest,

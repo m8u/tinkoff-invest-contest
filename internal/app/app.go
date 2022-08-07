@@ -3,14 +3,14 @@ package app
 import (
 	"sync"
 	"tinkoff-invest-contest/internal/appstate"
-	"tinkoff-invest-contest/internal/bots"
+	"tinkoff-invest-contest/internal/bot"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
 
 type botsTable struct {
 	Lock  sync.Mutex
-	Table map[string]bots.Bot
+	Table map[string]*bot.Bot
 }
 
 var (
@@ -24,6 +24,6 @@ func init() {
 	SandboxEnv = tradeenv.New(utils.GetSandboxToken(), true)
 	CombatEnv = tradeenv.New(utils.GetCombatToken(), false)
 	Bots = &botsTable{
-		Table: make(map[string]bots.Bot),
+		Table: make(map[string]*bot.Bot),
 	}
 }

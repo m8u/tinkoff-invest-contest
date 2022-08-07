@@ -4,37 +4,37 @@ import (
 	"encoding/json"
 	"github.com/go-yaml/yaml"
 	"tinkoff-invest-contest/internal/client/investapi"
-	"tinkoff-invest-contest/internal/strategies/tistrategy"
+	"tinkoff-invest-contest/internal/strategies/strategy"
 	indicators "tinkoff-invest-contest/internal/technical_indicators"
 	"tinkoff-invest-contest/internal/utils"
 )
 
-type strategy struct {
+type bollingerStrategy struct {
 	indicator      *indicators.BollingerBands
 	pointDeviation float64
 }
 
-type params struct {
+type bollingerParams struct {
 	Coef           float64 `json:"coef" yaml:"Coef"`
 	PointDeviation float64 `json:"pointDev" yaml:"PointDeviation"`
 }
 
-func NewFromJSON(s string) (tistrategy.TechnicalIndicatorStrategy, error) {
-	p := params{}
+func NewFromJSON(s string) (strategy.Strategy, error) {
+	p := bollingerParams{}
 
 	err := json.Unmarshal([]byte(s), &p)
 	if err != nil {
 		return nil, err
 	}
 
-	return &strategy{
+	return &bollingerStrategy{
 		indicator:      indicators.NewBollingerBands(p.Coef),
 		pointDeviation: p.PointDeviation,
 	}, nil
 }
 
 func GetDefaultsJSON() string {
-	defaults := params{
+	defaults := bollingerParams{
 		Coef:           3,
 		PointDeviation: 0.0005,
 	}
@@ -43,21 +43,21 @@ func GetDefaultsJSON() string {
 	return string(bytes)
 }
 
-func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*utils.TradeSignal, map[string]any) {
-	lowerBound, upperBound := strategy.indicator.Calculate(candles)
+func (b *bollingerStrategy) GetTradeSignal(marketData strategy.MarketData) (*utils.TradeSignal, map[string]any) {
+	lowerBound, upperBound := b.indicator.Calculate(marketData.Candles)
 	indicatorValues := map[string]any{
 		"bollinger_lower_bound": lowerBound,
 		"bollinger_upper_bound": upperBound,
 	}
 
-	currentCandle := candles[len(candles)-1]
+	currentCandle := marketData.Candles[len(marketData.Candles)-1]
 	var signal *utils.TradeSignal
-	if tistrategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, strategy.pointDeviation) &&
+	if strategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, b.pointDeviation) &&
 		utils.QuotationToFloat(currentCandle.Close) < ((lowerBound+upperBound)/2) {
 		// Buy signal
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_BUY}
 
-	} else if tistrategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, strategy.pointDeviation) {
+	} else if strategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, b.pointDeviation) {
 		// Sell signal
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}
@@ -65,23 +65,23 @@ func (strategy *strategy) GetTradeSignal(candles []*investapi.HistoricCandle) (*
 	return signal, indicatorValues
 }
 
-func (strategy *strategy) GetOutputKeys() []string {
+func (*bollingerStrategy) GetOutputKeys() []string {
 	return []string{
 		"bollinger_lower_bound",
 		"bollinger_upper_bound",
 	}
 }
 
-func (strategy *strategy) GetYAML() string {
-	obj := params{
-		Coef:           strategy.indicator.GetCoef(),
-		PointDeviation: strategy.pointDeviation,
+func (b *bollingerStrategy) GetYAML() string {
+	obj := bollingerParams{
+		Coef:           b.indicator.GetCoef(),
+		PointDeviation: b.pointDeviation,
 	}
 	bytes, err := yaml.Marshal(obj)
 	utils.MaybeCrash(err)
 	return string(bytes)
 }
 
-func (strategy *strategy) GetName() string {
+func (*bollingerStrategy) GetName() string {
 	return "Bollinger Bands (R)"
 }

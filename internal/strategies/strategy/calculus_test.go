@@ -1,4 +1,4 @@
-package tistrategy
+package strategy
 
 import "testing"
 

@@ -1,4 +1,4 @@
-package bots
+package bot
 
 import (
 	"fmt"
@@ -10,16 +10,17 @@ import (
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
-	"tinkoff-invest-contest/internal/strategies/tistrategy"
+	"tinkoff-invest-contest/internal/strategies/strategy"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
 
-type TechnicalIndicatorBot struct {
+type Bot struct {
 	figi           string
 	instrumentType utils.InstrumentType
 	candleInterval investapi.CandleInterval
 	window         int
+	orderBookDepth int32
 	allowMargin    bool
 	fee            float64
 
@@ -31,20 +32,22 @@ type TechnicalIndicatorBot struct {
 	lastDiscardTS       time.Time
 	prevSignalDirection investapi.OrderDirection
 
-	strategy tistrategy.TechnicalIndicatorStrategy
+	strategy strategy.Strategy
 
 	started  bool
 	paused   bool
 	removing bool
 }
 
-func NewTechnicalIndicatorBot(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string, instrumentType utils.InstrumentType,
-	candleInterval investapi.CandleInterval, window int, allowMargin bool, fee float64, strategy tistrategy.TechnicalIndicatorStrategy) *TechnicalIndicatorBot {
-	bot := &TechnicalIndicatorBot{
+func NewTechnicalIndicatorBot(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
+	instrumentType utils.InstrumentType, candleInterval investapi.CandleInterval, window int, orderBookDepth int32,
+	allowMargin bool, fee float64, strategy strategy.Strategy) *Bot {
+	bot := &Bot{
 		figi:           figi,
 		instrumentType: instrumentType,
 		candleInterval: candleInterval,
 		window:         window,
+		orderBookDepth: orderBookDepth,
 		allowMargin:    allowMargin,
 		fee:            fee,
 		id:             id,
@@ -66,11 +69,16 @@ func NewTechnicalIndicatorBot(id string, name string, tradeEnv *tradeenv.TradeEn
 	return bot
 }
 
-func (bot *TechnicalIndicatorBot) loop() error {
+func (bot *Bot) loop() error {
 	currentTimestamp := time.Time{}
 
-	var candles []*investapi.HistoricCandle
-	var err error
+	var (
+		candles              []*investapi.HistoricCandle
+		err                  error
+		currentCandle        *investapi.Candle
+		currentOrderBook     *investapi.OrderBook
+		shouldReleaseAccount bool
+	)
 
 	instrument, err := bot.tradeEnv.Client.InstrumentByFigi(bot.figi, bot.instrumentType)
 	if err != nil {
@@ -82,8 +90,8 @@ func (bot *TechnicalIndicatorBot) loop() error {
 		channels := bot.tradeEnv.GetChannels(bot.figi)
 		select {
 		// Get candle from stream
-		case currentCandle := <-channels.Candle:
-			shouldReleaseAccount := false
+		case currentCandle = <-channels.Candle:
+			shouldReleaseAccount = false
 			if currentCandle.Time.AsTime() != currentTimestamp {
 				// On a new candle, get historic candles in amount of >= window
 				candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
@@ -98,9 +106,19 @@ func (bot *TechnicalIndicatorBot) loop() error {
 			}
 			go db.UpdateLastCandle(bot.id, currentCandle)
 
-			// Get trade signal
-			signal, indicatorValues := bot.strategy.GetTradeSignal(
-				append(candles,
+		case currentOrderBook = <-channels.OrderBook:
+
+		default:
+			// Don't block, unless
+			for bot.paused && !bot.removing {
+			}
+			continue
+		}
+
+		// Get trade signal
+		signal, returnData := bot.strategy.GetTradeSignal(
+			strategy.MarketData{
+				Candles: append(candles,
 					&investapi.HistoricCandle{
 						Open:   currentCandle.Open,
 						High:   currentCandle.High,
@@ -109,97 +127,93 @@ func (bot *TechnicalIndicatorBot) loop() error {
 						Volume: currentCandle.Volume,
 					},
 				),
-			)
-			indicatorValues["time"] = currentCandle.Time.AsTime()
-			go db.AddIndicatorValues(bot.id, indicatorValues)
+				OrderBook: currentOrderBook,
+			},
+		)
+		returnData["time"] = currentCandle.Time.AsTime()
+		go db.AddIndicatorValues(bot.id, returnData)
 
-			if signal != nil && time.Now().After(bot.lastDiscardTS.Add(time.Minute)) {
-				// Get unoccupied account or use the existing one,
-				// and determine lot quantity for the deal (either buy or sell)
-				var lots int64
-				if bot.occupiedAccountId == "" {
-					accountId, discard, unlock := bot.tradeEnv.GetUnoccupiedAccount(instrument.GetCurrency())
-					if accountId == "" {
-						continue
-					}
-					maxDealValue := bot.tradeEnv.CalculateMaxDealValue(
-						accountId,
-						signal.Direction,
-						instrument,
-						currentCandle.Close,
-						bot.allowMargin,
-					)
-					lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Direction, maxDealValue, instrument, currentCandle.Close, bot.fee)
-					if lots == 0 {
-						bot.lastDiscardTS = time.Now()
-						discard()
-						unlock()
-						continue
-					}
-					unlock()
-					bot.occupiedAccountId = accountId
-				} else if signal.Direction != bot.prevSignalDirection {
-					shouldReleaseAccount = true
-					lots, err = bot.tradeEnv.GetLotsHave(bot.occupiedAccountId, instrument)
-					if err != nil {
-						log.Println(bot.logPrefix(), utils.PrettifyError(err))
-						return err
-					}
-					lots = int64(math.Abs(float64(lots)))
-				} else {
+		if signal != nil && time.Now().After(bot.lastDiscardTS.Add(time.Minute)) {
+			// Get unoccupied account or use the existing one,
+			// and determine lot quantity for the deal (either buy or sell)
+			var lots int64
+			if bot.occupiedAccountId == "" {
+				accountId, discard, unlock := bot.tradeEnv.GetUnoccupiedAccount(instrument.GetCurrency())
+				if accountId == "" {
 					continue
 				}
-
-				// Place an order and wait for it to be filled
-				log.Printf("%v %v %v lots for %v %v, account: %v",
-					bot.logPrefix(),
-					utils.OrderDirectionToString(signal.Direction),
-					lots,
-					utils.QuotationToFloat(currentCandle.Close),
-					instrument.GetCurrency(),
-					bot.occupiedAccountId,
-				)
-
-				err := bot.tradeEnv.DoOrder(
-					bot.figi,
-					lots,
+				maxDealValue := bot.tradeEnv.CalculateMaxDealValue(
+					accountId,
+					signal.Direction,
+					instrument,
 					currentCandle.Close,
-					signal.Direction,
-					bot.occupiedAccountId,
-					investapi.OrderType_ORDER_TYPE_MARKET,
+					bot.allowMargin,
 				)
-				if err != nil {
-					log.Printf("%v order error: %v", bot.logPrefix(), utils.PrettifyError(err))
-					return err
+				lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Direction, maxDealValue, instrument, currentCandle.Close, bot.fee)
+				if lots == 0 {
+					bot.lastDiscardTS = time.Now()
+					discard()
+					unlock()
+					continue
 				}
-				err = dashboard.AnnotateOrder(
-					bot.id,
-					signal.Direction,
-					lots*int64(instrument.GetLot()),
-					utils.QuotationToFloat(currentCandle.Close),
-					instrument.GetCurrency(),
-				)
+				unlock()
+				bot.occupiedAccountId = accountId
+			} else if signal.Direction != bot.prevSignalDirection {
+				shouldReleaseAccount = true
+				lots, err = bot.tradeEnv.GetLotsHave(bot.occupiedAccountId, instrument)
 				if err != nil {
 					log.Println(bot.logPrefix(), utils.PrettifyError(err))
+					return err
 				}
-
-				if shouldReleaseAccount {
-					bot.tradeEnv.ReleaseAccount(bot.occupiedAccountId, instrument.GetCurrency())
-					bot.occupiedAccountId = ""
-				}
-				bot.prevSignalDirection = signal.Direction
+				lots = int64(math.Abs(float64(lots)))
+			} else {
+				continue
 			}
 
-		default:
-			// Don't block, unless
-			for bot.paused && !bot.removing {
+			// Place an order and wait for it to be filled
+			log.Printf("%v %v %v lots for %v %v, account: %v",
+				bot.logPrefix(),
+				utils.OrderDirectionToString(signal.Direction),
+				lots,
+				utils.QuotationToFloat(currentCandle.Close),
+				instrument.GetCurrency(),
+				bot.occupiedAccountId,
+			)
+
+			err := bot.tradeEnv.DoOrder(
+				bot.figi,
+				lots,
+				currentCandle.Close,
+				signal.Direction,
+				bot.occupiedAccountId,
+				investapi.OrderType_ORDER_TYPE_MARKET,
+			)
+			if err != nil {
+				log.Printf("%v order error: %v", bot.logPrefix(), utils.PrettifyError(err))
+				return err
 			}
+			err = dashboard.AnnotateOrder(
+				bot.id,
+				signal.Direction,
+				lots*int64(instrument.GetLot()),
+				utils.QuotationToFloat(currentCandle.Close),
+				instrument.GetCurrency(),
+			)
+			if err != nil {
+				log.Println(bot.logPrefix(), utils.PrettifyError(err))
+			}
+
+			if shouldReleaseAccount {
+				bot.tradeEnv.ReleaseAccount(bot.occupiedAccountId, instrument.GetCurrency())
+				bot.occupiedAccountId = ""
+			}
+			bot.prevSignalDirection = signal.Direction
 		}
 	}
 	return nil
 }
 
-func (bot *TechnicalIndicatorBot) Serve() {
+func (bot *Bot) Serve() {
 	bot.started = true
 	for !appstate.ShouldExit && !bot.removing {
 		log.Printf("%v bot %q is starting...", bot.logPrefix(), bot.name)
@@ -207,6 +221,8 @@ func (bot *TechnicalIndicatorBot) Serve() {
 		utils.WaitForInternetConnection()
 
 		err := bot.tradeEnv.Client.SubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
+		utils.MaybeCrash(err)
+		err = bot.tradeEnv.Client.SubscribeOrderBook(bot.figi, bot.orderBookDepth)
 		utils.MaybeCrash(err)
 
 		err = bot.loop()
@@ -217,7 +233,7 @@ func (bot *TechnicalIndicatorBot) Serve() {
 	}
 }
 
-func (bot *TechnicalIndicatorBot) TogglePause() {
+func (bot *Bot) TogglePause() {
 	bot.paused = !bot.paused
 	if bot.paused {
 		log.Printf("%v bot %q is paused", bot.logPrefix(), bot.name)
@@ -226,7 +242,7 @@ func (bot *TechnicalIndicatorBot) TogglePause() {
 	}
 }
 
-func (bot *TechnicalIndicatorBot) Remove() {
+func (bot *Bot) Remove() {
 	bot.removing = true
 	err := bot.tradeEnv.Client.UnsubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 	if err != nil {
@@ -235,19 +251,19 @@ func (bot *TechnicalIndicatorBot) Remove() {
 	log.Printf("%v bot %q has been removed", bot.logPrefix(), bot.name)
 }
 
-func (bot *TechnicalIndicatorBot) IsPaused() bool {
+func (bot *Bot) IsPaused() bool {
 	return bot.paused
 }
 
-func (bot *TechnicalIndicatorBot) IsStarted() bool {
+func (bot *Bot) IsStarted() bool {
 	return bot.started
 }
 
-func (bot *TechnicalIndicatorBot) logPrefix() string {
+func (bot *Bot) logPrefix() string {
 	return fmt.Sprintf("[bot#%v]", bot.id)
 }
 
-func (bot *TechnicalIndicatorBot) GetYAML() string {
+func (bot *Bot) GetYAML() string {
 	obj := struct {
 		FIGI        string  `yaml:"FIGI"`
 		AllowMargin bool    `yaml:"AllowMargin"`
