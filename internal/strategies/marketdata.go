@@ -1,4 +1,4 @@
-package strategy
+package strategies
 
 import "tinkoff-invest-contest/internal/client/investapi"
 

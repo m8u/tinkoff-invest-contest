@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/go-yaml/yaml"
 	"tinkoff-invest-contest/internal/client/investapi"
-	"tinkoff-invest-contest/internal/strategies/strategy"
+	"tinkoff-invest-contest/internal/strategies"
 	indicators "tinkoff-invest-contest/internal/technical_indicators"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -19,7 +19,7 @@ type bollingerParams struct {
 	PointDeviation float64 `json:"pointDev" yaml:"PointDeviation"`
 }
 
-func NewFromJSON(s string) (strategy.Strategy, error) {
+func NewFromJSON(s string) (strategies.Strategy, error) {
 	p := bollingerParams{}
 
 	err := json.Unmarshal([]byte(s), &p)
@@ -43,7 +43,7 @@ func GetDefaultsJSON() string {
 	return string(bytes)
 }
 
-func (b *bollingerStrategy) GetTradeSignal(marketData strategy.MarketData) (*utils.TradeSignal, map[string]any) {
+func (b *bollingerStrategy) GetTradeSignal(marketData strategies.MarketData) (*utils.TradeSignal, map[string]any) {
 	lowerBound, upperBound := b.indicator.Calculate(marketData.Candles)
 	indicatorValues := map[string]any{
 		"bollinger_lower_bound": lowerBound,
@@ -52,12 +52,12 @@ func (b *bollingerStrategy) GetTradeSignal(marketData strategy.MarketData) (*uti
 
 	currentCandle := marketData.Candles[len(marketData.Candles)-1]
 	var signal *utils.TradeSignal
-	if strategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, b.pointDeviation) &&
+	if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, b.pointDeviation) &&
 		utils.QuotationToFloat(currentCandle.Close) < ((lowerBound+upperBound)/2) {
 		// Buy signal
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_BUY}
 
-	} else if strategy.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, b.pointDeviation) {
+	} else if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, b.pointDeviation) {
 		// Sell signal
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}

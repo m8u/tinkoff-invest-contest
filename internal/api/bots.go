@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"tinkoff-invest-contest/internal/app"
 	"tinkoff-invest-contest/internal/bot"
-	"tinkoff-invest-contest/internal/strategies/strategy"
+	"tinkoff-invest-contest/internal/strategies"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -70,7 +70,7 @@ func CreateBot(c *gin.Context) {
 	}
 	name += " #" + id
 
-	if newStrategyFromJSON, ok := strategy.JSONConstructors[args.StrategyName]; ok {
+	if newStrategyFromJSON, ok := strategies.JSONConstructors[args.StrategyName]; ok {
 		s, err := newStrategyFromJSON(args.StrategyConfig)
 		if err != nil {
 			_, _ = c.Writer.WriteString(marshalResponse(

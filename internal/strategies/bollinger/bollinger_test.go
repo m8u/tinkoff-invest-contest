@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 	"tinkoff-invest-contest/internal/client/investapi"
-	"tinkoff-invest-contest/internal/strategies/strategy"
+	"tinkoff-invest-contest/internal/strategies"
 	indicators "tinkoff-invest-contest/internal/technical_indicators"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -64,7 +64,7 @@ func Test_bollinger_GetTradeSignal(t *testing.T) {
 				indicator:      tt.fields.indicator,
 				pointDeviation: tt.fields.pointDeviation,
 			}
-			gotSignal, gotValues := b.GetTradeSignal(strategy.MarketData{
+			gotSignal, gotValues := b.GetTradeSignal(strategies.MarketData{
 				Candles: tt.args.candles,
 			})
 			if !reflect.DeepEqual(gotSignal, tt.wantSignal) {

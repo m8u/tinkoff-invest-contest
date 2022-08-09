@@ -10,7 +10,7 @@ import (
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/dashboard"
 	db "tinkoff-invest-contest/internal/database"
-	"tinkoff-invest-contest/internal/strategies/strategy"
+	"tinkoff-invest-contest/internal/strategies"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
 )
@@ -32,7 +32,7 @@ type Bot struct {
 	lastDiscardTS       time.Time
 	prevSignalDirection investapi.OrderDirection
 
-	strategy strategy.Strategy
+	strategy strategies.Strategy
 
 	started  bool
 	paused   bool
@@ -41,7 +41,7 @@ type Bot struct {
 
 func NewTechnicalIndicatorBot(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
 	instrumentType utils.InstrumentType, candleInterval investapi.CandleInterval, window int, orderBookDepth int32,
-	allowMargin bool, fee float64, strategy strategy.Strategy) *Bot {
+	allowMargin bool, fee float64, strategy strategies.Strategy) *Bot {
 	bot := &Bot{
 		figi:           figi,
 		instrumentType: instrumentType,
@@ -117,7 +117,7 @@ func (bot *Bot) loop() error {
 
 		// Get trade signal
 		signal, returnData := bot.strategy.GetTradeSignal(
-			strategy.MarketData{
+			strategies.MarketData{
 				Candles: append(candles,
 					&investapi.HistoricCandle{
 						Open:   currentCandle.Open,

@@ -1,4 +1,4 @@
-package strategy
+package strategies
 
 // IsAroundPoint determines if samplePoint lies within a range
 // of refPoint with given relative deviation
