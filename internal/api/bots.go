@@ -89,7 +89,7 @@ func CreateBot(c *gin.Context) {
 		}
 
 		app.Bots.Lock.Lock()
-		app.Bots.Table[id] = bot.NewTechnicalIndicatorBot(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.OrderBookDepth, args.AllowMargin, fee, s)
+		app.Bots.Table[id] = bot.New(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.OrderBookDepth, args.AllowMargin, fee, s)
 		app.Bots.Lock.Unlock()
 	} else {
 		_, _ = c.Writer.WriteString(marshalResponse(

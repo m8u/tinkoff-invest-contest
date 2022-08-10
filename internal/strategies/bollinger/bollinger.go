@@ -19,6 +19,12 @@ type bollingerParams struct {
 	PointDeviation float64 `json:"pointDev" yaml:"PointDeviation"`
 }
 
+func init() {
+	strategies.Names = append(strategies.Names, "bollinger")
+	strategies.JSONConstructors["bollinger"] = NewFromJSON
+	strategies.DefaultsJSON["bollinger"] = GetDefaultsJSON
+}
+
 func NewFromJSON(s string) (strategies.Strategy, error) {
 	p := bollingerParams{}
 

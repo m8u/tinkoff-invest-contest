@@ -39,7 +39,7 @@ type Bot struct {
 	removing bool
 }
 
-func NewTechnicalIndicatorBot(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
+func New(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
 	instrumentType utils.InstrumentType, candleInterval investapi.CandleInterval, window int, orderBookDepth int32,
 	allowMargin bool, fee float64, strategy strategies.Strategy) *Bot {
 	bot := &Bot{

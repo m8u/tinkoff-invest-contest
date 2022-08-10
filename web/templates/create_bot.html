@@ -62,6 +62,10 @@
       </div>
     </div>
     <div class="form-group py-2">
+      <label for="depthText">Depth (for orderbook strategies)</label>
+      <input class="form-control" id="depthText" type="number" name="orderBookDepth" value="10">
+    </div>
+    <div class="form-group py-2">
       <label class="mb-2" for="strategyNameSelect">Strategy</label>
       <select class="form-select" id="strategyNameSelect" name="strategyName" onchange="printStrategyDefaults()">
         <option disabled selected value></option>

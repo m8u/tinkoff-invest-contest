@@ -1,7 +1,6 @@
 package strategies
 
 import (
-	"tinkoff-invest-contest/internal/strategies/bollinger"
 	"tinkoff-invest-contest/internal/utils"
 )
 
@@ -12,18 +11,7 @@ type Strategy interface {
 	GetName() string
 }
 
-var Names = [...]string{
-	"bollinger",
-}
+var Names = make([]string, 0)
 
-var JSONConstructors map[string]func(string) (Strategy, error)
-var DefaultsJSON map[string]func() string
-
-func init() {
-	JSONConstructors = map[string]func(string) (Strategy, error){
-		"bollinger": bollinger.NewFromJSON,
-	}
-	DefaultsJSON = map[string]func() string{
-		"bollinger": bollinger.GetDefaultsJSON,
-	}
-}
+var JSONConstructors = make(map[string]func(string) (Strategy, error))
+var DefaultsJSON = make(map[string]func() string)

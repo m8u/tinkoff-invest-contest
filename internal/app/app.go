@@ -6,6 +6,9 @@ import (
 	"tinkoff-invest-contest/internal/bot"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
+
+	// Shadow-import your strategies here
+	_ "tinkoff-invest-contest/internal/strategies/bollinger"
 )
 
 type botsTable struct {
