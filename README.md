@@ -9,5 +9,8 @@ $ docker-compose up
 ```
 Wait until `grafana` service has started. Then go to http://localhost:3000, generate Grafana API token in settings and provide it via `GRAFANA_TOKEN` variable, then restart the application. NOTE: You'll possibly need to put `--build` flag for docker-compose to copy an edited `.env` file to container. 
 
+# Screenshots
+<img src="screenshot1.png" alt="screenshot1.png">
+
 # Documentation
 *soon*
