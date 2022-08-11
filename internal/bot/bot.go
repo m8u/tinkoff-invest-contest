@@ -90,7 +90,8 @@ func (bot *Bot) loop() error {
 		channels := bot.tradeEnv.GetChannels(bot.figi)
 		select {
 		// Get candle from stream
-		case currentCandle = <-channels.Candle:
+		case candle := <-channels.Candle:
+			currentCandle = candle
 			shouldReleaseAccount = false
 			if currentCandle.Time.AsTime() != currentTimestamp {
 				// On a new candle, get historic candles in amount of >= window
@@ -106,12 +107,17 @@ func (bot *Bot) loop() error {
 			}
 			go db.UpdateLastCandle(bot.id, currentCandle)
 
-		case currentOrderBook = <-channels.OrderBook:
+		case orderBook := <-channels.OrderBook:
+			currentOrderBook = orderBook
 
 		default:
 			// Don't block, unless
 			for bot.paused && !bot.removing {
 			}
+			continue
+		}
+
+		if currentCandle == nil || currentOrderBook == nil {
 			continue
 		}
 
