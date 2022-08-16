@@ -9,6 +9,7 @@ import (
 
 	// Shadow-import your strategies here
 	_ "tinkoff-invest-contest/internal/strategies/bollinger"
+	_ "tinkoff-invest-contest/internal/strategies/consecutive_ratio"
 )
 
 type botsTable struct {

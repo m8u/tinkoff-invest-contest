@@ -20,9 +20,10 @@ type bollingerParams struct {
 }
 
 func init() {
-	strategies.Names = append(strategies.Names, "bollinger")
-	strategies.JSONConstructors["bollinger"] = NewFromJSON
-	strategies.DefaultsJSON["bollinger"] = GetDefaultsJSON
+	strategyName := "bollinger"
+	strategies.Names = append(strategies.Names, strategyName)
+	strategies.JSONConstructors[strategyName] = NewFromJSON
+	strategies.DefaultsJSON[strategyName] = GetDefaultsJSON
 }
 
 func NewFromJSON(s string) (strategies.Strategy, error) {
@@ -49,8 +50,8 @@ func GetDefaultsJSON() string {
 	return string(bytes)
 }
 
-func (b *bollingerStrategy) GetTradeSignal(marketData strategies.MarketData) (*utils.TradeSignal, map[string]any) {
-	lowerBound, upperBound := b.indicator.Calculate(marketData.Candles)
+func (s *bollingerStrategy) GetTradeSignal(marketData strategies.MarketData) (*utils.TradeSignal, map[string]any) {
+	lowerBound, upperBound := s.indicator.Calculate(marketData.Candles)
 	indicatorValues := map[string]any{
 		"bollinger_lower_bound": lowerBound,
 		"bollinger_upper_bound": upperBound,
@@ -58,12 +59,12 @@ func (b *bollingerStrategy) GetTradeSignal(marketData strategies.MarketData) (*u
 
 	currentCandle := marketData.Candles[len(marketData.Candles)-1]
 	var signal *utils.TradeSignal
-	if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, b.pointDeviation) &&
+	if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, s.pointDeviation) &&
 		utils.QuotationToFloat(currentCandle.Close) < ((lowerBound+upperBound)/2) {
 		// Buy signal
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_BUY}
 
-	} else if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, b.pointDeviation) {
+	} else if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, s.pointDeviation) {
 		// Sell signal
 		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_SELL}
 	}
@@ -78,10 +79,10 @@ func (*bollingerStrategy) GetOutputKeys() []string {
 	}
 }
 
-func (b *bollingerStrategy) GetYAML() string {
+func (s *bollingerStrategy) GetYAML() string {
 	obj := bollingerParams{
-		Coef:           b.indicator.GetCoef(),
-		PointDeviation: b.pointDeviation,
+		Coef:           s.indicator.GetCoef(),
+		PointDeviation: s.pointDeviation,
 	}
 	bytes, err := yaml.Marshal(obj)
 	utils.MaybeCrash(err)

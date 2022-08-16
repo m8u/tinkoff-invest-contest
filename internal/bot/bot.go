@@ -122,7 +122,7 @@ func (bot *Bot) loop() error {
 		}
 
 		// Get trade signal
-		signal, returnData := bot.strategy.GetTradeSignal(
+		signal, outputValues := bot.strategy.GetTradeSignal(
 			strategies.MarketData{
 				Candles: append(candles,
 					&investapi.HistoricCandle{
@@ -136,8 +136,10 @@ func (bot *Bot) loop() error {
 				OrderBook: currentOrderBook,
 			},
 		)
-		returnData["time"] = currentCandle.Time.AsTime()
-		go db.AddIndicatorValues(bot.id, returnData)
+		if len(outputValues) > 0 {
+			outputValues["time"] = currentCandle.Time.AsTime()
+			go db.AddStrategyOutputValues(bot.id, outputValues)
+		}
 
 		if signal != nil && time.Now().After(bot.lastDiscardTS.Add(time.Minute)) {
 			// Get unoccupied account or use the existing one,

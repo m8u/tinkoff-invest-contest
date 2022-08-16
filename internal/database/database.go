@@ -71,7 +71,7 @@ func CreateIndicatorValuesTable(botId string, fields []string) {
 	utils.MaybeCrash(err)
 }
 
-func AddIndicatorValues(botId string, indicatorValues map[string]any) {
+func AddStrategyOutputValues(botId string, indicatorValues map[string]any) {
 	ensureDBInitialized()
 	keys := make([]string, 0)
 	values := make([]any, 0)
