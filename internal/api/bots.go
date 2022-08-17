@@ -100,15 +100,17 @@ func CreateBot(c *gin.Context) {
 		return
 	}
 
-	botId++
-	mu.Unlock()
 	_, _ = c.Writer.WriteString(marshalResponse(
 		http.StatusOK,
 		"",
 		struct {
+			Id   string `json:"id"`
 			Name string `json:"name"`
-		}{name},
+		}{fmt.Sprint(botId), name},
 	))
+
+	botId++
+	mu.Unlock()
 }
 
 func StartBot(c *gin.Context) {

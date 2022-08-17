@@ -65,7 +65,8 @@
     <div class="form-group py-2">
       <textarea class="form-control font-monospace" id="strategyConfigTextarea" name="strategyConfig" rows="5">{}</textarea>
     </div>
-    <button class="btn btn-primary py-2 my-3" type="button" onclick="createBot()">Create</button>
+    <button class="btn btn-primary py-2 my-3" type="button" onclick="createBot(false)">Create</button>
+    <button class="btn btn-primary py-2 my-3" type="button" onclick="createBot(true)">Create and start</button>
   </form>
   <div class="toast-container position-fixed bottom-0 start-0 m-3 p-3">
     <div class="toast align-items-center" role="alert" aria-live="assertive" aria-atomic="true" id="toast">
@@ -110,20 +111,30 @@
       })
     }
 
-    function createBot () {
+    function createBot(startImmediately) {
       let formData = $("#createBotForm").serialize()
       let figis = $("#figiText").val().split(/ *, */)
       figis.forEach(figi => {
+        let id
+        let success = false
         fetch("/api/bots/Create?"+formData+"&figi="+figi, {
           method: "POST"
         }).then(async resp => {
           resp = JSON.parse(await resp.text())
           if (resp.status === 200) {
             $("#toastText").html("Bot \'"+resp.payload[0].name+"\' successfully created")
+            success = true
+            id = resp.payload[0].id
           } else {
             $("#toastText").html("Error "+resp.status+": "+resp.message)
           }
           (new bootstrap.Toast($("#toast"))).show()
+        }).then(() => {
+          if (success && startImmediately) {
+            fetch("/api/bots/Start?id=" + id, {
+            method: "POST"
+          })
+        }
         })
       })
     }
