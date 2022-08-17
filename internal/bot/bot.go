@@ -92,7 +92,6 @@ func (bot *Bot) loop() error {
 		// Get candle from stream
 		case candle := <-channels.Candle:
 			currentCandle = candle
-			shouldReleaseAccount = false
 			if currentCandle.Time.AsTime() != currentTimestamp {
 				// On a new candle, get historic candles in amount of >= window
 				candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
@@ -141,6 +140,7 @@ func (bot *Bot) loop() error {
 			go db.AddStrategyOutputValues(bot.id, outputValues)
 		}
 
+		shouldReleaseAccount = false
 		if signal != nil && time.Now().After(bot.lastDiscardTS.Add(time.Minute)) {
 			// Get unoccupied account or use the existing one,
 			// and determine lot quantity for the deal (either buy or sell)
