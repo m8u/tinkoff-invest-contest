@@ -178,7 +178,6 @@ func (bot *Bot) loop() error {
 				continue
 			}
 
-			log.Println(bot.logPrefix(), utils.OrderDirectionToString(signal.Direction))
 			// Place an order and wait for it to be filled
 			orderStatus, err := bot.tradeEnv.DoOrder(
 				bot.figi,

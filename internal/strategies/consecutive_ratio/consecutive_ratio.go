@@ -10,7 +10,6 @@ package consecutive_ratio
 import (
 	"encoding/json"
 	"github.com/go-yaml/yaml"
-	"log"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/strategies"
 	"tinkoff-invest-contest/internal/utils"
@@ -81,8 +80,6 @@ func (s *consecutiveRatioStrategy) GetTradeSignal(marketData strategies.MarketDa
 		s.flag = investapi.OrderDirection_ORDER_DIRECTION_UNSPECIFIED
 		s.timesRepeated = 0
 	}
-
-	log.Println(marketData.OrderBook.Figi, bidsRatio, asksRatio, s.timesRepeated)
 
 	var signal *utils.TradeSignal
 	if s.timesRepeated >= s.triggerTimesRepeated {
