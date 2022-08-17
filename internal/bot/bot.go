@@ -179,16 +179,7 @@ func (bot *Bot) loop() error {
 			}
 
 			// Place an order and wait for it to be filled
-			log.Printf("%v %v %v lots for %v %v, account: %v",
-				bot.logPrefix(),
-				utils.OrderDirectionToString(signal.Direction),
-				lots,
-				utils.QuotationToFloat(currentCandle.Close),
-				instrument.GetCurrency(),
-				bot.occupiedAccountId,
-			)
-
-			err := bot.tradeEnv.DoOrder(
+			orderStatus, err := bot.tradeEnv.DoOrder(
 				bot.figi,
 				lots,
 				currentCandle.Close,
@@ -200,6 +191,15 @@ func (bot *Bot) loop() error {
 				log.Printf("%v order error: %v", bot.logPrefix(), utils.PrettifyError(err))
 				return err
 			}
+			log.Printf("%v %v %v %v for %v %v, account: %v",
+				bot.logPrefix(),
+				utils.OrderDirectionToString(signal.Direction),
+				lots*int64(instrument.GetLot()),
+				instrument.GetTicker(),
+				utils.MoneyValueToFloat(orderStatus.ExecutedOrderPrice),
+				instrument.GetCurrency(),
+				bot.occupiedAccountId,
+			)
 			err = dashboard.AnnotateOrder(
 				bot.id,
 				signal.Direction,
