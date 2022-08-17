@@ -37,15 +37,6 @@
       <input class="form-check-input" type="checkbox" id="allowMarginCheckbox" name="allowMargin" value="1">
       <label class="form-check-label" for="allowMarginCheckbox">Allow margin trading</label>
     </div>
-    <div class="form-group py-2" id="feeTextDiv">
-      <label class="mb-2" for="feeText">Fee (%)</label>
-      <input class="form-control" id="feeText" type="number" name="fee" list="fees" value="0.04">
-      <datalist id="fees">
-        <option value="0.3">Investor</option>
-        <option value="0.04">Trader</option>
-        <option value="0.025">Premium</option>
-      </datalist>
-    </div>
     <div class="form-group py-2">
       <label for="windowText">Window (for TI strategies)</label>
       <input class="form-control" id="windowText" type="number" name="window" value="30">
@@ -103,13 +94,10 @@
 
     function switchSandbox() {
       let allowMarginDiv = $("#allowMarginCheckboxDiv")
-      let feeDiv = $("#feeTextDiv")
       if (allowMarginDiv.hasClass("d-none")) {
         allowMarginDiv.removeClass("d-none")
-        feeDiv.addClass("d-none")
       } else {
         allowMarginDiv.addClass("d-none")
-        feeDiv.removeClass("d-none")
       }
     }
 

@@ -11,7 +11,7 @@ import (
 type TradeEnv struct {
 	token     string
 	isSandbox bool
-	CombatFee float64
+	Fee       float64
 
 	mu            sync.RWMutex
 	accounts      map[string]map[string]*moneyPosition
@@ -37,7 +37,9 @@ func New(token string, isSandbox bool) *TradeEnv {
 
 		info, err := tradeEnv.Client.GetInfo()
 		utils.MaybeCrash(err)
-		tradeEnv.CombatFee = utils.Fees[utils.Tariff(info.Tariff)]
+		tradeEnv.Fee = utils.Fees[utils.Tariff(info.Tariff)]
+	} else {
+		tradeEnv.Fee = 0
 	}
 
 	go tradeEnv.Client.RunMarketDataStreamLoop(tradeEnv.handleMarketDataStream, tradeEnv.handleResubscribe)

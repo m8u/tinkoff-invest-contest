@@ -15,11 +15,10 @@ var botId int64
 
 func CreateBot(c *gin.Context) {
 	args := struct {
-		Sandbox        bool    `form:"sandbox"`
-		Figi           string  `form:"figi"`
-		InstrumentType string  `form:"instrumentType"`
-		AllowMargin    bool    `form:"allowMargin"`
-		Fee            float64 `form:"fee"`
+		Sandbox        bool   `form:"sandbox"`
+		Figi           string `form:"figi"`
+		InstrumentType string `form:"instrumentType"`
+		AllowMargin    bool   `form:"allowMargin"`
 
 		StrategyName   string `form:"strategyName"`
 		StrategyConfig string `form:"strategyConfig"`
@@ -41,11 +40,10 @@ func CreateBot(c *gin.Context) {
 	var fee float64
 	if args.Sandbox {
 		tradeEnv = app.SandboxEnv
-		fee = args.Fee / 100
 	} else {
 		tradeEnv = app.CombatEnv
-		fee = tradeEnv.CombatFee
 	}
+	fee = tradeEnv.Fee
 	instrumentType, err := utils.StringToInstrumentType(args.InstrumentType)
 	if err != nil {
 		_, _ = c.Writer.WriteString(marshalResponse(
