@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"sync"
 	"tinkoff-invest-contest/internal/app"
 	"tinkoff-invest-contest/internal/bot"
 	"tinkoff-invest-contest/internal/strategies"
@@ -11,6 +12,7 @@ import (
 	"tinkoff-invest-contest/internal/utils"
 )
 
+var mu sync.Mutex
 var botId int64
 
 func CreateBot(c *gin.Context) {
@@ -53,6 +55,7 @@ func CreateBot(c *gin.Context) {
 		return
 	}
 
+	mu.Lock()
 	id := fmt.Sprint(botId)
 	instrument, err := tradeEnv.Client.InstrumentByFigi(args.Figi, instrumentType)
 	if err != nil {
@@ -98,6 +101,7 @@ func CreateBot(c *gin.Context) {
 	}
 
 	botId++
+	mu.Unlock()
 	_, _ = c.Writer.WriteString(marshalResponse(
 		http.StatusOK,
 		"",

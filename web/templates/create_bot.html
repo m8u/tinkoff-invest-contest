@@ -20,8 +20,8 @@
       <label class="form-check-label" for="sandboxSwitch">Sandbox</label>
     </div>
     <div class="form-group py-2">
-      <label class="mb-2" for="figiText">FIGI</label>
-      <input class="form-control" id="figiText" type="text" name="figi" placeholder="BBG000B9XRY4">
+      <label class="mb-2" for="figiText">FIGI(s)</label>
+      <input class="form-control" id="figiText" type="text" placeholder="BBG000B9XRY4">
     </div>
     <div class="form-group py-2">
       <label class="mb-2" for="instrumentTypeSelect">Instrument type</label>
@@ -111,16 +111,20 @@
     }
 
     function createBot () {
-      fetch("/api/bots/Create?"+$("#createBotForm").serialize(), {
-        method: "POST"
-      }).then(async resp => {
-        resp = JSON.parse(await resp.text())
-        if (resp.status === 200) {
-          $("#toastText").html("Bot \'"+resp.payload[0].name+"\' successfully created")
-        } else {
-          $("#toastText").html("Error "+resp.status+": "+resp.message)
-        }
-        (new bootstrap.Toast($("#toast"))).show()
+      let formData = $("#createBotForm").serialize()
+      let figis = $("#figiText").val().split(/ *, */)
+      figis.forEach(figi => {
+        fetch("/api/bots/Create?"+formData+"&figi="+figi, {
+          method: "POST"
+        }).then(async resp => {
+          resp = JSON.parse(await resp.text())
+          if (resp.status === 200) {
+            $("#toastText").html("Bot \'"+resp.payload[0].name+"\' successfully created")
+          } else {
+            $("#toastText").html("Error "+resp.status+": "+resp.message)
+          }
+          (new bootstrap.Toast($("#toast"))).show()
+        })
       })
     }
   </script>
