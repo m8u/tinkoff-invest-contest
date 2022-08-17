@@ -138,7 +138,7 @@ func AnnotateOrder(botId string, direction investapi.OrderDirection, quantity in
 	_, err := client.NewAnnotation(&grafana.Annotation{
 		DashboardID: botDashboards[botId],
 		PanelID:     0,
-		Text: fmt.Sprintf("%v %v for %v %v",
+		Text: fmt.Sprintf("%v %v for avg. %v %v",
 			utils.OrderDirectionToString(direction),
 			quantity,
 			price,
