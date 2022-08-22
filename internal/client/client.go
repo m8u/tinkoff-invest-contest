@@ -7,7 +7,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"log"
 	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
@@ -17,9 +16,11 @@ const ServiceAddress string = "invest-public-api.tinkoff.ru:443"
 const AppName = "m8u"
 
 type Client struct {
-	token            string
-	appname          string
+	token   string
+	appname string
+
 	marketDataStream investapi.MarketDataStreamService_MarketDataStreamClient
+	tradesStream     investapi.OrdersStreamService_TradesStreamClient
 
 	InstrumentsService      investapi.InstrumentsServiceClient
 	OperationsService       investapi.OperationsServiceClient
@@ -37,9 +38,7 @@ func NewClient(token string) *Client {
 	utils.WaitForInternetConnection()
 	var err error
 	clientConn, err := grpc.Dial(ServiceAddress, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
-	if err != nil {
-		log.Fatalln(err)
-	}
+	utils.MaybeCrash(err)
 	client := Client{
 		token:                   token,
 		InstrumentsService:      investapi.NewInstrumentsServiceClient(clientConn),
@@ -57,15 +56,22 @@ func NewClient(token string) *Client {
 }
 
 // InitMarketDataStream initializes a market data stream.
-// Call it after creating a Client if you need any data from Invest API streams
+// Call it after creating a Client if you need any data from Invest API market data streams
 func (c *Client) InitMarketDataStream() {
 	var err error
 	c.marketDataStream, err = c.MarketDataStreamService.MarketDataStream(
 		newContextWithBearerToken(c.token),
 	)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	utils.MaybeCrash(err)
+}
+
+func (c *Client) InitTradesStream(accountIds []string) {
+	var err error
+	c.tradesStream, err = c.OrdersStreamService.TradesStream(
+		newContextWithBearerToken(c.token),
+		&investapi.TradesStreamRequest{Accounts: accountIds},
+	)
+	utils.MaybeCrash(err)
 }
 
 func newContextWithBearerToken(token string) context.Context {
@@ -371,6 +377,17 @@ func (c *Client) RunMarketDataStreamLoop(handleResponse func(marketDataResp *inv
 			resubscribe()
 		}
 		resp, err = c.marketDataStream.Recv()
+		handleResponse(resp)
+	}
+}
+
+func (c *Client) RunTradesStreamLoop(handleResponse func(tradesResp *investapi.TradesStreamResponse)) {
+	var err error
+	var resp *investapi.TradesStreamResponse
+	for {
+		utils.WaitForInternetConnection()
+		resp, err = c.tradesStream.Recv()
+		utils.MaybeCrash(err)
 		handleResponse(resp)
 	}
 }

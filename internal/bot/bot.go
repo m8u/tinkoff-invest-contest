@@ -56,7 +56,7 @@ func New(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
 		strategy:       strategy,
 	}
 
-	bot.tradeEnv.InitChannels(bot.figi)
+	bot.tradeEnv.InitMarketDataChannels(bot.figi)
 
 	err := db.CreateCandlesTable(bot.id)
 	utils.MaybeCrash(err)
@@ -87,10 +87,10 @@ func (bot *Bot) loop() error {
 	}
 
 	for !appstate.ShouldExit && !bot.removing {
-		channels := bot.tradeEnv.GetChannels(bot.figi)
+		marketData := bot.tradeEnv.GetMarketDataChannels(bot.figi)
 		select {
 		// Get candle from stream
-		case candle := <-channels.Candle:
+		case candle := <-marketData.Candle:
 			currentCandle = candle
 			if currentCandle.Time.AsTime() != currentTimestamp {
 				// On a new candle, get historic candles in amount of >= window
@@ -106,7 +106,7 @@ func (bot *Bot) loop() error {
 			}
 			go db.UpdateLastCandle(bot.id, currentCandle)
 
-		case orderBook := <-channels.OrderBook:
+		case orderBook := <-marketData.OrderBook:
 			currentOrderBook = orderBook
 
 		default:
@@ -179,7 +179,7 @@ func (bot *Bot) loop() error {
 			}
 
 			// Place an order and wait for it to be filled
-			orderStatus, err := bot.tradeEnv.DoOrder(
+			avgPositionPrice, err := bot.tradeEnv.DoOrder(
 				bot.figi,
 				lots,
 				currentCandle.Close,
@@ -196,7 +196,7 @@ func (bot *Bot) loop() error {
 				utils.OrderDirectionToString(signal.Direction),
 				lots*int64(instrument.GetLot()),
 				instrument.GetTicker(),
-				utils.MoneyValueToFloat(orderStatus.AveragePositionPrice),
+				avgPositionPrice,
 				instrument.GetCurrency(),
 				bot.occupiedAccountId,
 			)
@@ -204,7 +204,7 @@ func (bot *Bot) loop() error {
 				bot.id,
 				signal.Direction,
 				lots*int64(instrument.GetLot()),
-				utils.MoneyValueToFloat(orderStatus.AveragePositionPrice),
+				avgPositionPrice,
 				instrument.GetCurrency(),
 			)
 			if err != nil {

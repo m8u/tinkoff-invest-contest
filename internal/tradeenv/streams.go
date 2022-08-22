@@ -97,15 +97,15 @@ func (e *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {
 	}
 	tradingStatus := event.GetTradingStatus()
 	if tradingStatus != nil {
-		e.Channels[tradingStatus.Figi].TradingStatus <- tradingStatus
+		e.marketData[tradingStatus.Figi].TradingStatus <- tradingStatus
 	}
 	candle := event.GetCandle()
 	if candle != nil {
-		e.Channels[candle.Figi].Candle <- candle
+		e.marketData[candle.Figi].Candle <- candle
 	}
 	orderBook := event.GetOrderbook()
 	if orderBook != nil {
-		e.Channels[orderBook.Figi].OrderBook <- orderBook
+		e.marketData[orderBook.Figi].OrderBook <- orderBook
 	}
 }
 
@@ -115,18 +115,41 @@ type MarketDataChannelStack struct {
 	OrderBook     chan *investapi.OrderBook
 }
 
-func (e *TradeEnv) InitChannels(figi string) {
+func (e *TradeEnv) InitMarketDataChannels(figi string) {
 	e.mu.Lock()
-	e.Channels[figi] = &MarketDataChannelStack{
+	e.marketData[figi] = &MarketDataChannelStack{
 		TradingStatus: make(chan *investapi.TradingStatus),
-		Candle:        make(chan *investapi.Candle),
-		OrderBook:     make(chan *investapi.OrderBook),
+		Candle:        make(chan *investapi.Candle, 100),
+		OrderBook:     make(chan *investapi.OrderBook, 100),
 	}
 	e.mu.Unlock()
 }
 
-func (e *TradeEnv) GetChannels(figi string) *MarketDataChannelStack {
+func (e *TradeEnv) GetMarketDataChannels(figi string) *MarketDataChannelStack {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.Channels[figi]
+	return e.marketData[figi]
+}
+
+func (e *TradeEnv) InitTradesChannels(accountIds []string) {
+	e.Client.InitTradesStream(accountIds)
+	e.mu.Lock()
+	for _, id := range accountIds {
+		e.trades[id] = make(chan *investapi.OrderTrades)
+	}
+	e.mu.Unlock()
+}
+
+func (e *TradeEnv) handleTradesStream(resp *investapi.TradesStreamResponse) {
+	orderTrades := resp.GetOrderTrades()
+	if orderTrades == nil {
+		return
+	}
+	e.trades[orderTrades.AccountId] <- orderTrades
+}
+
+func (e *TradeEnv) GetTradesChannel(accountId string) chan *investapi.OrderTrades {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.trades[accountId]
 }

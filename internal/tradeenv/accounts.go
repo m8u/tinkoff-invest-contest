@@ -83,19 +83,24 @@ func (e *TradeEnv) RemoveSandboxAccount(id string) {
 func (e *TradeEnv) loadCombatAccounts() {
 	accounts, err := e.Client.GetAccounts()
 	utils.MaybeCrash(err)
+	accountIds := make([]string, 0)
 	e.mu.Lock()
 	for _, account := range accounts {
 		positions, err := e.Client.GetPositions(account.Id)
 		utils.MaybeCrash(err)
-		e.accounts[account.Id] = make(map[string]*moneyPosition)
+		e.accounts[account.Id] = map[string]*moneyPosition{
+			"rub": {},
+			"usd": {},
+		}
 		for _, position := range positions.Money {
-			e.accounts[account.Id][position.Currency] = &moneyPosition{
-				amount:   utils.MoneyValueToFloat(position),
-				occupied: false,
+			if _, ok := e.accounts[account.Id][position.Currency]; ok {
+				e.accounts[account.Id][position.Currency].amount = utils.MoneyValueToFloat(position)
 			}
 		}
+		accountIds = append(accountIds, account.Id)
 	}
 	e.mu.Unlock()
+	e.InitTradesChannels(accountIds)
 }
 
 type accountsPayloadEntry struct {

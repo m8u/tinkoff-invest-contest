@@ -123,7 +123,7 @@ func TestTradeEnv_GetLotsHave(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			instrument, _ := e.Client.InstrumentByFigi(tt.args.figi, tt.args.instrumentType)
 			accountId, unlock, _ := e.GetUnoccupiedAccount(instrument.GetCurrency())
-			_ = e.DoOrder(tt.args.figi, tt.wantLots, utils.FloatToQuotation(1000),
+			_, _ = e.DoOrder(tt.args.figi, tt.wantLots, utils.FloatToQuotation(1000),
 				investapi.OrderDirection_ORDER_DIRECTION_BUY, accountId, investapi.OrderType_ORDER_TYPE_MARKET)
 			gotLots, err := e.GetLotsHave(accountId, instrument)
 			if (err != nil) != tt.wantErr {

@@ -35,7 +35,7 @@ func TestTradeEnv_DoOrder(t *testing.T) {
 			e.CreateSandboxAccount(map[string]float64{"rub": 100000, "usd": 10000})
 			instrument, _ := e.Client.InstrumentByFigi(tt.args.figi, tt.args.instrumentType)
 			accountId, unlock, _ := e.GetUnoccupiedAccount(instrument.GetCurrency())
-			err := e.DoOrder(tt.args.figi, tt.args.quantity, tt.args.price,
+			_, err := e.DoOrder(tt.args.figi, tt.args.quantity, tt.args.price,
 				investapi.OrderDirection_ORDER_DIRECTION_BUY, accountId, investapi.OrderType_ORDER_TYPE_MARKET)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DoOrder() (buy) error = %v, wantErr %v", err, tt.wantErr)
@@ -46,7 +46,7 @@ func TestTradeEnv_DoOrder(t *testing.T) {
 				t.Errorf("DoOrder() (buy) gotLotsHave = %v, want %v", gotLotsHave, tt.args.quantity)
 				return
 			}
-			err = e.DoOrder(tt.args.figi, tt.args.quantity, tt.args.price,
+			_, err = e.DoOrder(tt.args.figi, tt.args.quantity, tt.args.price,
 				investapi.OrderDirection_ORDER_DIRECTION_SELL, accountId, investapi.OrderType_ORDER_TYPE_MARKET)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DoOrder() (sell) error = %v, wantErr %v", err, tt.wantErr)

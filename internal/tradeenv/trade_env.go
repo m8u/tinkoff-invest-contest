@@ -5,6 +5,7 @@ import (
 	"sync"
 	"tinkoff-invest-contest/internal/appstate"
 	"tinkoff-invest-contest/internal/client"
+	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
 )
 
@@ -16,7 +17,8 @@ type TradeEnv struct {
 	mu            sync.RWMutex
 	accounts      map[string]map[string]*moneyPosition
 	subscriptions *subscriptions
-	Channels      map[string]*MarketDataChannelStack
+	marketData    map[string]*MarketDataChannelStack
+	trades        map[string]chan *investapi.OrderTrades
 
 	Client *client.Client
 }
@@ -27,13 +29,15 @@ func New(token string, isSandbox bool) *TradeEnv {
 		isSandbox:     isSandbox,
 		accounts:      make(map[string]map[string]*moneyPosition),
 		subscriptions: new(subscriptions),
-		Channels:      make(map[string]*MarketDataChannelStack),
+		marketData:    make(map[string]*MarketDataChannelStack),
+		trades:        make(map[string]chan *investapi.OrderTrades),
 		Client:        client.NewClient(token),
 	}
 	tradeEnv.Client.InitMarketDataStream()
 
 	if !isSandbox {
 		tradeEnv.loadCombatAccounts()
+		go tradeEnv.Client.RunTradesStreamLoop(tradeEnv.handleTradesStream)
 
 		info, err := tradeEnv.Client.GetInfo()
 		utils.MaybeCrash(err)

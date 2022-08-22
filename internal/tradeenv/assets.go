@@ -12,7 +12,7 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 	if e.isSandbox {
 		positions, err = e.Client.GetSandboxPositions(accountId)
 	} else {
-		positions, err = e.Client.GetSandboxPositions(accountId)
+		positions, err = e.Client.GetPositions(accountId)
 	}
 	utils.MaybeCrash(err)
 

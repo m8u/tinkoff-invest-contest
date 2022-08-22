@@ -88,13 +88,16 @@ func (s *consecutiveRatioStrategy) GetTradeSignal(marketData strategies.MarketDa
 		}
 	}
 
-	outputValues := map[string]any{}
+	outputValues := map[string]any{
+		"bids_ratio": bidsRatio * 100,
+		"asks_ratio": asksRatio * 100,
+	}
 
 	return signal, outputValues
 }
 
 func (*consecutiveRatioStrategy) GetOutputKeys() []string {
-	return []string{}
+	return []string{"bids_ratio", "asks_ratio"}
 }
 
 func (s *consecutiveRatioStrategy) GetYAML() string {
