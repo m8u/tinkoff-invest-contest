@@ -1,11 +1,9 @@
 package strategies
 
-import (
-	"tinkoff-invest-contest/internal/utils"
-)
+import "tinkoff-invest-contest/internal/utils"
 
 type Strategy interface {
-	GetTradeSignal(marketData MarketData) (*utils.TradeSignal, map[string]any)
+	GetTradeSignal(instrument utils.InstrumentInterface, marketData MarketData) (*TradeSignal, map[string]any)
 	GetOutputKeys() []string
 	GetYAML() string
 	GetName() string

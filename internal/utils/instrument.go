@@ -9,6 +9,7 @@ type InstrumentInterface interface {
 	GetDlong() *investapi.Quotation
 	GetDshort() *investapi.Quotation
 	GetLot() int32
+	GetMinPriceIncrement() *investapi.Quotation
 	GetShortEnabledFlag() bool
 	GetCurrency() string
 	GetFigi() string

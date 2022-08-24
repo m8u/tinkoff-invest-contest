@@ -2,7 +2,7 @@
 consecutive_ratio.go describes a strategy that generates
 a trade signal when the ratio of asks or bids to all orders
 in order book satisfies the condition (ratio >= triggerRatio)
-for specified amount of times.
+for specified amount of times in a row.
 */
 
 package consecutive_ratio
@@ -59,7 +59,7 @@ func GetDefaultsJSON() string {
 	return string(bytes)
 }
 
-func (s *consecutiveRatioStrategy) GetTradeSignal(marketData strategies.MarketData) (*utils.TradeSignal, map[string]any) {
+func (s *consecutiveRatioStrategy) GetTradeSignal(instrument utils.InstrumentInterface, marketData strategies.MarketData) (*strategies.TradeSignal, map[string]any) {
 	var bids, asks int64
 	for _, order := range marketData.OrderBook.Bids {
 		bids += order.Quantity
@@ -81,23 +81,27 @@ func (s *consecutiveRatioStrategy) GetTradeSignal(marketData strategies.MarketDa
 		s.timesRepeated = 0
 	}
 
-	var signal *utils.TradeSignal
+	var signal *strategies.TradeSignal
 	if s.timesRepeated >= s.triggerTimesRepeated {
-		signal = &utils.TradeSignal{
-			Direction: s.flag,
-		}
+		price := marketData.Candles[len(marketData.Candles)-1].Close
+		signal = strategies.NewTradeSignalWithStopOrders(
+			s.flag,
+			investapi.OrderType_ORDER_TYPE_MARKET,
+			price,
+			investapi.OrderType_ORDER_TYPE_LIMIT,
+			0.005,
+			0.007,
+			0.01,
+			instrument.GetMinPriceIncrement(),
+		)
 	}
 
-	outputValues := map[string]any{
-		"bids_ratio": bidsRatio * 100,
-		"asks_ratio": asksRatio * 100,
-	}
-
+	outputValues := map[string]any{}
 	return signal, outputValues
 }
 
 func (*consecutiveRatioStrategy) GetOutputKeys() []string {
-	return []string{"bids_ratio", "asks_ratio"}
+	return []string{}
 }
 
 func (s *consecutiveRatioStrategy) GetYAML() string {

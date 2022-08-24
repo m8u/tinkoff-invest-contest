@@ -32,11 +32,16 @@ type Bot struct {
 	lastDiscardTS       time.Time
 	prevSignalDirection investapi.OrderDirection
 
+	currentStopLoss, currentTakeProfit *strategies.TradeSignalStopOrder
+
 	strategy strategies.Strategy
 
 	started  bool
 	paused   bool
 	removing bool
+
+	orderError               chan error
+	waitingForOrderExecution bool
 }
 
 func New(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
@@ -54,6 +59,7 @@ func New(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
 		name:           name,
 		tradeEnv:       tradeEnv,
 		strategy:       strategy,
+		orderError:     make(chan error),
 	}
 
 	bot.tradeEnv.InitMarketDataChannels(bot.figi)
@@ -109,6 +115,13 @@ func (bot *Bot) loop() error {
 		case orderBook := <-marketData.OrderBook:
 			currentOrderBook = orderBook
 
+		case orderError := <-bot.orderError:
+			if orderError != nil {
+				log.Printf("%v order error: %v", bot.logPrefix(), utils.PrettifyError(orderError))
+				return orderError
+			}
+			bot.waitingForOrderExecution = false
+
 		default:
 			// Don't block, unless
 			for bot.paused && !bot.removing {
@@ -122,6 +135,7 @@ func (bot *Bot) loop() error {
 
 		// Get trade signal
 		signal, outputValues := bot.strategy.GetTradeSignal(
+			instrument,
 			strategies.MarketData{
 				Candles: append(candles,
 					&investapi.HistoricCandle{
@@ -140,6 +154,39 @@ func (bot *Bot) loop() error {
 			go db.AddStrategyOutputValues(bot.id, outputValues)
 		}
 
+		if bot.waitingForOrderExecution {
+			continue
+		}
+
+		if bot.currentStopLoss != nil {
+			signal = nil
+			if bot.currentStopLoss.IsTriggered(currentCandle.Close) {
+				signal = &strategies.TradeSignal{
+					Order: &strategies.TradeSignalOrder{
+						Direction: bot.currentStopLoss.Direction,
+					},
+				}
+				if bot.currentStopLoss.Type == investapi.StopOrderType_STOP_ORDER_TYPE_STOP_LIMIT {
+					signal.Order.Type = investapi.OrderType_ORDER_TYPE_LIMIT
+					signal.Order.Price = bot.currentStopLoss.LimitPrice
+				} else {
+					signal.Order.Type = investapi.OrderType_ORDER_TYPE_MARKET
+					signal.Order.Price = bot.currentStopLoss.TriggerPrice
+				}
+			} else if bot.currentTakeProfit.IsTriggered(currentCandle.Close) {
+				signal = &strategies.TradeSignal{
+					Order: &strategies.TradeSignalOrder{
+						Type:      investapi.OrderType_ORDER_TYPE_MARKET,
+						Direction: bot.currentTakeProfit.Direction,
+						Price:     bot.currentTakeProfit.TriggerPrice,
+					},
+				}
+			}
+			if signal != nil {
+				bot.currentStopLoss, bot.currentTakeProfit = nil, nil
+			}
+		}
+
 		shouldReleaseAccount = false
 		if signal != nil && time.Now().After(bot.lastDiscardTS.Add(time.Minute)) {
 			// Get unoccupied account or use the existing one,
@@ -152,12 +199,12 @@ func (bot *Bot) loop() error {
 				}
 				maxDealValue := bot.tradeEnv.CalculateMaxDealValue(
 					accountId,
-					signal.Direction,
+					signal.Order.Direction,
 					instrument,
 					currentCandle.Close,
 					bot.allowMargin,
 				)
-				lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Direction, maxDealValue, instrument, currentCandle.Close, bot.fee)
+				lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Order.Direction, maxDealValue, instrument, currentCandle.Close, bot.fee)
 				if lots == 0 {
 					bot.lastDiscardTS = time.Now()
 					discard()
@@ -166,7 +213,7 @@ func (bot *Bot) loop() error {
 				}
 				unlock()
 				bot.occupiedAccountId = accountId
-			} else if signal.Direction != bot.prevSignalDirection {
+			} else if signal.Order.Direction != bot.prevSignalDirection {
 				shouldReleaseAccount = true
 				lots, err = bot.tradeEnv.GetLotsHave(bot.occupiedAccountId, instrument)
 				if err != nil {
@@ -178,44 +225,70 @@ func (bot *Bot) loop() error {
 				continue
 			}
 
-			// Place an order and wait for it to be filled
-			avgPositionPrice, err := bot.tradeEnv.DoOrder(
-				bot.figi,
-				lots,
-				currentCandle.Close,
-				signal.Direction,
-				bot.occupiedAccountId,
-				investapi.OrderType_ORDER_TYPE_MARKET,
-			)
-			if err != nil {
-				log.Printf("%v order error: %v", bot.logPrefix(), utils.PrettifyError(err))
-				return err
-			}
-			log.Printf("%v %v %v %v for avg. %v %v, account: %v",
-				bot.logPrefix(),
-				utils.OrderDirectionToString(signal.Direction),
-				lots*int64(instrument.GetLot()),
-				instrument.GetTicker(),
-				avgPositionPrice,
-				instrument.GetCurrency(),
-				bot.occupiedAccountId,
-			)
-			err = dashboard.AnnotateOrder(
-				bot.id,
-				signal.Direction,
-				lots*int64(instrument.GetLot()),
-				avgPositionPrice,
-				instrument.GetCurrency(),
-			)
-			if err != nil {
-				log.Println(bot.logPrefix(), utils.PrettifyError(err))
-			}
+			bot.waitingForOrderExecution = true
+			go func() {
+				// Place an order and wait for it to be filled
+				avgPositionPrice, err := bot.tradeEnv.DoOrder(
+					bot.figi,
+					lots,
+					currentCandle.Close,
+					signal.Order.Direction,
+					bot.occupiedAccountId,
+					investapi.OrderType_ORDER_TYPE_MARKET,
+				)
+				log.Println(bot.logPrefix())
+				log.Printf("%v %v %v %v for avg. %v %v, account: %v",
+					bot.logPrefix(),
+					utils.OrderDirectionToString(signal.Order.Direction),
+					lots*int64(instrument.GetLot()),
+					instrument.GetTicker(),
+					avgPositionPrice,
+					instrument.GetCurrency(),
+					bot.occupiedAccountId,
+				)
+				err = dashboard.AnnotateOrder(
+					bot.id,
+					signal.Order.Direction,
+					lots*int64(instrument.GetLot()),
+					avgPositionPrice,
+					instrument.GetCurrency(),
+				)
+				if err != nil {
+					log.Println(bot.logPrefix(), utils.PrettifyError(err))
+				}
 
-			if shouldReleaseAccount {
-				bot.tradeEnv.ReleaseAccount(bot.occupiedAccountId, instrument.GetCurrency())
-				bot.occupiedAccountId = ""
-			}
-			bot.prevSignalDirection = signal.Direction
+				if shouldReleaseAccount {
+					bot.tradeEnv.ReleaseAccount(bot.occupiedAccountId, instrument.GetCurrency())
+					bot.occupiedAccountId = ""
+				}
+				bot.prevSignalDirection = signal.Order.Direction
+
+				if signal.StopLoss != nil {
+					bot.currentStopLoss, bot.currentTakeProfit = signal.StopLoss, signal.TakeProfit
+					if bot.currentStopLoss.Type == investapi.StopOrderType_STOP_ORDER_TYPE_STOP_LIMIT {
+						log.Printf("%v setting stop loss = %v -> %v %v",
+							bot.logPrefix(),
+							utils.QuotationToFloat(bot.currentStopLoss.TriggerPrice),
+							utils.QuotationToFloat(bot.currentStopLoss.LimitPrice),
+							instrument.GetCurrency(),
+						)
+					} else {
+						log.Printf("%v setting stop loss = %v %v",
+							bot.logPrefix(),
+							utils.QuotationToFloat(bot.currentStopLoss.TriggerPrice),
+							instrument.GetCurrency(),
+						)
+					}
+					log.Printf("%v setting take profit = %v %v",
+						bot.logPrefix(),
+						utils.QuotationToFloat(bot.currentTakeProfit.TriggerPrice),
+						instrument.GetCurrency(),
+					)
+				}
+				log.Println(bot.logPrefix())
+
+				bot.orderError <- err
+			}()
 		}
 	}
 	return nil

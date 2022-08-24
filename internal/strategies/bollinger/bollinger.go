@@ -50,7 +50,7 @@ func GetDefaultsJSON() string {
 	return string(bytes)
 }
 
-func (s *bollingerStrategy) GetTradeSignal(marketData strategies.MarketData) (*utils.TradeSignal, map[string]any) {
+func (s *bollingerStrategy) GetTradeSignal(instrument utils.InstrumentInterface, marketData strategies.MarketData) (*strategies.TradeSignal, map[string]any) {
 	lowerBound, upperBound := s.indicator.Calculate(marketData.Candles)
 	indicatorValues := map[string]any{
 		"bollinger_lower_bound": lowerBound,
@@ -58,15 +58,23 @@ func (s *bollingerStrategy) GetTradeSignal(marketData strategies.MarketData) (*u
 	}
 
 	currentCandle := marketData.Candles[len(marketData.Candles)-1]
-	var signal *utils.TradeSignal
+	var signal *strategies.TradeSignal
 	if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), lowerBound, s.pointDeviation) &&
 		utils.QuotationToFloat(currentCandle.Close) < ((lowerBound+upperBound)/2) {
 		// Buy signal
-		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_BUY}
+		signal = strategies.NewTradeSignal(
+			investapi.OrderDirection_ORDER_DIRECTION_BUY,
+			investapi.OrderType_ORDER_TYPE_MARKET,
+			currentCandle.Close,
+		)
 
 	} else if strategies.IsAroundPoint(utils.QuotationToFloat(currentCandle.Close), upperBound, s.pointDeviation) {
 		// Sell signal
-		signal = &utils.TradeSignal{Direction: investapi.OrderDirection_ORDER_DIRECTION_SELL}
+		signal = strategies.NewTradeSignal(
+			investapi.OrderDirection_ORDER_DIRECTION_SELL,
+			investapi.OrderType_ORDER_TYPE_MARKET,
+			currentCandle.Close,
+		)
 	}
 
 	return signal, indicatorValues
