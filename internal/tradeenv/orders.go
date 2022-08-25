@@ -36,12 +36,10 @@ func (e *TradeEnv) DoOrder(figi string, quantity int64, price *investapi.Quotati
 				}
 			}
 		}
-		var quantitySum int64
 		for _, trade := range orderTrades.Trades {
 			avgPositionPrice += utils.QuotationToFloat(trade.Price)
-			quantitySum += trade.Quantity
 		}
-		avgPositionPrice /= float64(quantitySum)
+		avgPositionPrice /= float64(len(orderTrades.Trades))
 	}
 	return
 }

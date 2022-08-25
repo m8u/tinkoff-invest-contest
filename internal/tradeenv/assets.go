@@ -30,7 +30,7 @@ func (e *TradeEnv) CalculateMaxDealValue(accountId string, direction investapi.O
 	}
 
 	var marginAttributes *investapi.GetMarginAttributesResponse
-	if !e.isSandbox {
+	if !e.isSandbox && allowMargin {
 		marginAttributes, err = e.Client.GetMarginAttributes(accountId)
 		utils.MaybeCrash(err)
 	}
