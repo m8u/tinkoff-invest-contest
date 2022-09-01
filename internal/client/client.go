@@ -382,12 +382,10 @@ func (c *Client) RunMarketDataStreamLoop(handleResponse func(marketDataResp *inv
 }
 
 func (c *Client) RunTradesStreamLoop(handleResponse func(tradesResp *investapi.TradesStreamResponse)) {
-	var err error
 	var resp *investapi.TradesStreamResponse
 	for {
 		utils.WaitForInternetConnection()
-		resp, err = c.tradesStream.Recv()
-		utils.MaybeCrash(err)
+		resp, _ = c.tradesStream.Recv()
 		handleResponse(resp)
 	}
 }

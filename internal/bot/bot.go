@@ -320,12 +320,10 @@ func (bot *Bot) Serve() {
 
 		utils.WaitForInternetConnection()
 
-		err := bot.tradeEnv.Client.SubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
-		utils.MaybeCrash(err)
-		err = bot.tradeEnv.Client.SubscribeOrderBook(bot.figi, bot.orderBookDepth)
-		utils.MaybeCrash(err)
+		bot.tradeEnv.SubscribeCandles(bot.id, bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
+		bot.tradeEnv.SubscribeOrderBook(bot.id, bot.figi, bot.orderBookDepth)
 
-		err = bot.loop()
+		err := bot.loop()
 		if err != nil {
 			log.Printf("%v bot %q has crashed, restarting...", bot.logPrefix(), bot.name)
 			time.Sleep(10 * time.Second)
@@ -344,10 +342,7 @@ func (bot *Bot) TogglePause() {
 
 func (bot *Bot) Remove() {
 	bot.removing = true
-	err := bot.tradeEnv.Client.UnsubscribeCandles(bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
-	if err != nil {
-		log.Println(bot.logPrefix(), utils.PrettifyError(err))
-	}
+	bot.tradeEnv.UnsubscribeAll(bot.figi)
 	log.Printf("%v bot %q has been removed", bot.logPrefix(), bot.name)
 }
 

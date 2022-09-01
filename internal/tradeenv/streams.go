@@ -7,67 +7,80 @@ import (
 )
 
 type subscriptions struct {
-	candles   []investapi.CandleInstrument
-	info      []investapi.InfoInstrument
-	orderBook []investapi.OrderBookInstrument
+	candles   map[string]investapi.CandleInstrument
+	info      map[string]investapi.InfoInstrument
+	orderBook map[string]investapi.OrderBookInstrument
 }
 
-func (e *TradeEnv) SubscribeCandles(figi string, interval investapi.SubscriptionInterval) {
+func (e *TradeEnv) SubscribeCandles(botId string, figi string, interval investapi.SubscriptionInterval) {
 	err := e.Client.SubscribeCandles(figi, interval)
 	utils.MaybeCrash(err)
 
 	e.mu.Lock()
-	e.subscriptions.candles = append(e.subscriptions.candles, investapi.CandleInstrument{
+	e.subscriptions.candles[botId] = investapi.CandleInstrument{
 		Figi:     figi,
 		Interval: interval,
-	})
+	}
 	e.mu.Unlock()
 }
 
-func (e *TradeEnv) SubscribeInfo(figi string) {
+func (e *TradeEnv) SubscribeInfo(botId string, figi string) {
 	err := e.Client.SubscribeInfo(figi)
 	utils.MaybeCrash(err)
 
 	e.mu.Lock()
-	e.subscriptions.info = append(e.subscriptions.info, investapi.InfoInstrument{
+	e.subscriptions.info[botId] = investapi.InfoInstrument{
 		Figi: figi,
-	})
+	}
 	e.mu.Unlock()
 }
 
-func (e *TradeEnv) SubscribeOrderBook(figi string, depth int32) {
+func (e *TradeEnv) SubscribeOrderBook(botId string, figi string, depth int32) {
 	err := e.Client.SubscribeOrderBook(figi, depth)
 	utils.MaybeCrash(err)
 
 	e.mu.Lock()
-	e.subscriptions.orderBook = append(e.subscriptions.orderBook, investapi.OrderBookInstrument{
+	e.subscriptions.orderBook[botId] = investapi.OrderBookInstrument{
 		Figi:  figi,
 		Depth: depth,
-	})
+	}
+	e.mu.Unlock()
+}
+
+func (e *TradeEnv) UnsubscribeAll(botId string) {
+	e.mu.Lock()
+	_ = e.Client.UnsubscribeCandles(e.subscriptions.candles[botId].Figi, e.subscriptions.candles[botId].Interval)
+	_ = e.Client.UnsubscribeInfo(e.subscriptions.info[botId].Figi)
+	_ = e.Client.UnsubscribeOrderBook(e.subscriptions.orderBook[botId].Figi, e.subscriptions.orderBook[botId].Depth)
+	delete(e.subscriptions.candles, botId)
+	delete(e.subscriptions.info, botId)
+	delete(e.subscriptions.orderBook, botId)
 	e.mu.Unlock()
 }
 
 func (e *TradeEnv) handleResubscribe() {
-	for i := 0; i < len(e.subscriptions.candles); i++ {
+	e.mu.RLock()
+	for _, subscription := range e.subscriptions.candles {
 		err := e.Client.SubscribeCandles(
-			e.subscriptions.candles[i].Figi,
-			e.subscriptions.candles[i].Interval,
+			subscription.Figi,
+			subscription.Interval,
 		)
 		utils.MaybeCrash(err)
 	}
-	for i := 0; i < len(e.subscriptions.info); i++ {
+	for _, subscription := range e.subscriptions.info {
 		err := e.Client.SubscribeInfo(
-			e.subscriptions.info[i].Figi,
+			subscription.Figi,
 		)
 		utils.MaybeCrash(err)
 	}
-	for i := 0; i < len(e.subscriptions.orderBook); i++ {
+	for _, subscription := range e.subscriptions.orderBook {
 		err := e.Client.SubscribeOrderBook(
-			e.subscriptions.orderBook[i].Figi,
-			e.subscriptions.orderBook[i].Depth,
+			subscription.Figi,
+			subscription.Depth,
 		)
 		utils.MaybeCrash(err)
 	}
+	e.mu.RUnlock()
 }
 
 func (e *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {

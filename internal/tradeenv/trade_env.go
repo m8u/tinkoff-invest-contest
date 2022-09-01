@@ -25,13 +25,17 @@ type TradeEnv struct {
 
 func New(token string, isSandbox bool) *TradeEnv {
 	tradeEnv := &TradeEnv{
-		token:         token,
-		isSandbox:     isSandbox,
-		accounts:      make(map[string]map[string]*moneyPosition),
-		subscriptions: new(subscriptions),
-		marketData:    make(map[string]*MarketDataChannelStack),
-		trades:        make(map[string]chan *investapi.OrderTrades),
-		Client:        client.NewClient(token),
+		token:     token,
+		isSandbox: isSandbox,
+		accounts:  make(map[string]map[string]*moneyPosition),
+		subscriptions: &subscriptions{
+			candles:   make(map[string]investapi.CandleInstrument),
+			info:      make(map[string]investapi.InfoInstrument),
+			orderBook: make(map[string]investapi.OrderBookInstrument),
+		},
+		marketData: make(map[string]*MarketDataChannelStack),
+		trades:     make(map[string]chan *investapi.OrderTrades),
+		Client:     client.NewClient(token),
 	}
 	tradeEnv.Client.InitMarketDataStream()
 
