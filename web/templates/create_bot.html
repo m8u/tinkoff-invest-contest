@@ -21,41 +21,23 @@
     </div>
     <div class="form-group py-2">
       <label class="mb-2" for="figiText">FIGI(s)</label>
-      <input class="form-control" id="figiText" type="text" placeholder="BBG000B9XRY4">
+      <input class="form-control" id="figiText" type="text" placeholder="BBG000B9XRY4, BBG004730RP0, ...">
     </div>
     <div class="form-group py-2">
       <label class="mb-2" for="instrumentTypeSelect">Instrument type</label>
       <select class="form-select" id="instrumentTypeSelect" name="instrumentType">
-        <option value="share" selected>Share</option>
-        <option value="bond">Bond</option>
-        <option value="currency">Currency</option>
-        <option value="etf">ETF</option>
-        <option value="future">Future</option>
+        <option value="4" selected>Share</option>
+        <option value="0">Bond</option>
+        <option value="1">Currency</option>
+        <option value="2">ETF</option>
+        <option value="3">Future</option>
       </select>
     </div>
     <div class="form-check py-2 d-none" id="allowMarginCheckboxDiv">
       <input class="form-check-input" type="checkbox" id="allowMarginCheckbox" name="allowMargin" value="1">
       <label class="form-check-label" for="allowMarginCheckbox">Allow margin trading</label>
     </div>
-    <div class="form-group py-2">
-      <label for="windowText">Window (for TI strategies)</label>
-      <input class="form-control" id="windowText" type="number" name="window" value="30">
-    </div>
-    <div class="form-group py-2">
-      <p class="mb-1">Candle interval (for TI strategies)</p>
-      <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="candleInterval" id="candleIntervalRadio1" value="1min" checked>
-        <label class="form-check-label" for="candleIntervalRadio1">1 min</label>
-      </div>
-      <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="candleInterval" id="candleIntervalRadio2" value="5min">
-        <label class="form-check-label" for="candleIntervalRadio2">5 min</label>
-      </div>
-    </div>
-    <div class="form-group py-2">
-      <label for="depthText">Depth (for orderbook strategies)</label>
-      <input class="form-control" id="depthText" type="number" name="orderBookDepth" value="10">
-    </div>
+
     <div class="form-group py-2">
       <label class="mb-2" for="strategyNameSelect">Strategy</label>
       <select class="form-select" id="strategyNameSelect" name="strategyName" onchange="printStrategyDefaults()">
@@ -65,6 +47,62 @@
     <div class="form-group py-2">
       <textarea class="form-control font-monospace" id="strategyConfigTextarea" name="strategyConfig" rows="5">{}</textarea>
     </div>
+
+    <div class="form-group py-2">
+      <label for="windowText">Window</label>
+      <input class="form-control" id="windowText" type="number" name="window" value="30">
+    </div>
+    <div class="form-group py-2">
+      <p class="mb-1">Candle interval</p>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="candleInterval" id="candleIntervalRadio1" value="1" checked>
+        <label class="form-check-label" for="candleIntervalRadio1">1 min</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="candleInterval" id="candleIntervalRadio2" value="2">
+        <label class="form-check-label" for="candleIntervalRadio2">5 min</label>
+      </div>
+    </div>
+    <div class="form-group py-2">
+      <label for="depthText">Depth</label>
+      <input class="form-control" id="depthText" type="number" name="orderBookDepth" value="10">
+    </div>
+
+    <div class="form-group py-2">
+      <p class="mb-1">Order type</p>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="orderType" id="orderTypeRadio1" value="2" checked>
+        <label class="form-check-label" for="orderTypeRadio1">Market</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="orderType" id="orderTypeRadio2" value="1">
+        <label class="form-check-label" for="orderTypeRadio2">Limit</label>
+      </div>
+    </div>
+    <div class="form-group py-2">
+      <p class="mb-1">Stop loss order type</p>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="stopLossOrderType" id="stopLossOrderTypeRadio1" value="2">
+        <label class="form-check-label" for="stopLossOrderTypeRadio1">Market</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="stopLossOrderType" id="stopLossOrderTypeRadio2" value="1" checked>
+        <label class="form-check-label" for="stopLossOrderTypeRadio2">Limit</label>
+      </div>
+    </div>
+    <div class="form-group py-2">
+      <label for="takeProfitRatioText">Take profit ratio</label>
+      <input class="form-control" id="takeProfitRatioText" type="number" name="takeProfitRatio" value="0.01" step="0.001">
+    </div>
+    <div class="form-group py-2">
+      <label for="stopLossRatioText">Stop loss ratio</label>
+      <input class="form-control" id="stopLossRatioText" type="number" name="stopLossRatio" value="0.007" step="0.001">
+    </div>
+    <div class="form-group py-2">
+      <label for="stopLossExecRatioText">Stop loss exec ratio</label>
+      <input class="form-control" id="stopLossExecRatioText" type="number" name="stopLossExecRatio" value="0.0085" step="0.001">
+    </div>
+
     <button class="btn btn-primary py-2 my-3" type="button" onclick="createBot(false)">Create</button>
     <button class="btn btn-primary py-2 my-3" type="button" onclick="createBot(true)">Create and start</button>
   </form>

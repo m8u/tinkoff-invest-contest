@@ -16,61 +16,79 @@ import (
 )
 
 type Bot struct {
-	figi           string
-	instrumentType utils.InstrumentType
-	candleInterval investapi.CandleInterval
-	window         int
-	orderBookDepth int32
-	allowMargin    bool
-	fee            float64
-
 	id   string
 	name string
 
-	tradeEnv            *tradeenv.TradeEnv
+	figi           string
+	instrumentType utils.InstrumentType
+	allowMargin    bool
+	fee            float64
+
+	tradeEnv *tradeenv.TradeEnv
+
 	occupiedAccountId   string
 	lastDiscardTS       time.Time
 	prevSignalDirection investapi.OrderDirection
 
+	ordersConfig strategies.OrdersConfig
+
+	candleInterval investapi.CandleInterval
+	window         int
+	orderBookDepth int32
+	strategy       strategies.Strategy
+
+	started, paused, removing bool
+	waitingForOrderExecution  bool
+	orderError                chan error
+
 	currentStopLoss, currentTakeProfit *strategies.TradeSignalStopOrder
-
-	strategy strategies.Strategy
-
-	started  bool
-	paused   bool
-	removing bool
-
-	orderError               chan error
-	waitingForOrderExecution bool
 }
 
-func New(id string, name string, tradeEnv *tradeenv.TradeEnv, figi string,
-	instrumentType utils.InstrumentType, candleInterval investapi.CandleInterval, window int, orderBookDepth int32,
-	allowMargin bool, fee float64, strategy strategies.Strategy) *Bot {
+func New(
+	id string,
+	name string,
+	figi string,
+	instrumentType utils.InstrumentType,
+	allowMargin bool,
+	fee float64,
+	tradeEnv *tradeenv.TradeEnv,
+	orderType investapi.OrderType,
+	stopLossOrderType investapi.OrderType,
+	takeProfitRatio float64,
+	stopLossRatio float64,
+	stopLossExecRatio float64,
+	candleInterval investapi.CandleInterval,
+	window int,
+	orderBookDepth int32,
+	strategy strategies.Strategy,
+) *Bot {
 	bot := &Bot{
+		id:             id,
+		name:           name,
 		figi:           figi,
 		instrumentType: instrumentType,
+		allowMargin:    allowMargin,
+		fee:            fee,
+		tradeEnv:       tradeEnv,
+		ordersConfig: strategies.OrdersConfig{
+			OrderType:         orderType,
+			StopLossOrderType: stopLossOrderType,
+			TakeProfitRatio:   takeProfitRatio,
+			StopLossRatio:     stopLossRatio,
+			StopLossExecRatio: stopLossExecRatio,
+		},
 		candleInterval: candleInterval,
 		window:         window,
 		orderBookDepth: orderBookDepth,
-		allowMargin:    allowMargin,
-		fee:            fee,
-		id:             id,
-		name:           name,
-		tradeEnv:       tradeEnv,
 		strategy:       strategy,
 		orderError:     make(chan error),
 	}
 
 	bot.tradeEnv.InitMarketDataChannels(bot.figi)
 
-	err := db.CreateCandlesTable(bot.id)
-	utils.MaybeCrash(err)
-
+	db.CreateCandlesTable(bot.id)
 	db.CreateIndicatorValuesTable(bot.id, strategy.GetOutputKeys())
-
-	err = dashboard.AddBotDashboard(bot.id, bot.name)
-	utils.MaybeCrash(err)
+	dashboard.AddBotDashboard(bot.id, bot.name)
 
 	return bot
 }
@@ -148,6 +166,7 @@ func (bot *Bot) loop() error {
 				),
 				OrderBook: currentOrderBook,
 			},
+			bot.ordersConfig,
 		)
 		if len(outputValues) > 0 {
 			outputValues["time"] = currentCandle.Time.AsTime()
@@ -168,7 +187,7 @@ func (bot *Bot) loop() error {
 				}
 				if bot.currentStopLoss.Type == investapi.StopOrderType_STOP_ORDER_TYPE_STOP_LIMIT {
 					signal.Order.Type = investapi.OrderType_ORDER_TYPE_LIMIT
-					signal.Order.Price = bot.currentStopLoss.LimitPrice
+					signal.Order.Price = bot.currentStopLoss.ExecPrice
 				} else {
 					signal.Order.Type = investapi.OrderType_ORDER_TYPE_MARKET
 					signal.Order.Price = bot.currentStopLoss.TriggerPrice
@@ -269,7 +288,7 @@ func (bot *Bot) loop() error {
 						log.Printf("%v setting stop loss = %v -> %v %v",
 							bot.logPrefix(),
 							utils.QuotationToFloat(bot.currentStopLoss.TriggerPrice),
-							utils.QuotationToFloat(bot.currentStopLoss.LimitPrice),
+							utils.QuotationToFloat(bot.currentStopLoss.ExecPrice),
 							instrument.GetCurrency(),
 						)
 					} else {

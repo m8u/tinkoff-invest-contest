@@ -9,7 +9,7 @@ type TradeSignalStopOrder struct {
 	Direction    investapi.OrderDirection
 	Type         investapi.StopOrderType
 	TriggerPrice *investapi.Quotation
-	LimitPrice   *investapi.Quotation
+	ExecPrice    *investapi.Quotation
 }
 
 func (stopOrder *TradeSignalStopOrder) IsTriggered(price *investapi.Quotation) bool {

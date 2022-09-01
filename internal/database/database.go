@@ -41,7 +41,7 @@ func ensureDBInitialized() {
 	}
 }
 
-func CreateCandlesTable(botId string) error {
+func CreateCandlesTable(botId string) {
 	ensureDBInitialized()
 	_, err := db.Exec(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS bot_%v_candles (
@@ -54,10 +54,7 @@ func CreateCandlesTable(botId string) error {
 			botId,
 		),
 	)
-	if err != nil {
-		return err
-	}
-	return nil
+	utils.MaybeCrash(err)
 }
 
 func CreateIndicatorValuesTable(botId string, fields []string) {

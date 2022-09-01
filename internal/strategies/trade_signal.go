@@ -28,14 +28,13 @@ func NewTradeSignal(direction investapi.OrderDirection, orderType investapi.Orde
 	}
 }
 
-func NewTradeSignalWithStopOrders(direction investapi.OrderDirection, orderType investapi.OrderType,
-	price *investapi.Quotation, stopLossOrderType investapi.OrderType,
-	profitTriggerRatio, lossTriggerRatio, lossLimitRatio float64, minPriceIncrement *investapi.Quotation) *TradeSignal {
+func NewTradeSignalWithStopOrders(direction investapi.OrderDirection, price *investapi.Quotation,
+	minPriceIncrement *investapi.Quotation, ordersConfig OrdersConfig) *TradeSignal {
 	stopOrdersDirection := utils.ReverseOrderDirection(direction)
 	signal := &TradeSignal{
 		Order: &TradeSignalOrder{
 			Direction: direction,
-			Type:      orderType,
+			Type:      ordersConfig.OrderType,
 			Price:     price,
 		},
 		TakeProfit: &TradeSignalStopOrder{
@@ -48,15 +47,15 @@ func NewTradeSignalWithStopOrders(direction investapi.OrderDirection, orderType 
 	}
 	priceFloat := utils.QuotationToFloat(price)
 	signal.TakeProfit.TriggerPrice = utils.RoundQuotation(utils.FloatToQuotation(
-		priceFloat*(1+profitTriggerRatio*math.Pow(-1, float64(stopOrdersDirection))),
+		priceFloat*(1+ordersConfig.TakeProfitRatio*math.Pow(-1, float64(stopOrdersDirection))),
 	), minPriceIncrement)
 
 	signal.StopLoss.TriggerPrice = utils.RoundQuotation(utils.FloatToQuotation(
-		priceFloat*(1-lossTriggerRatio*math.Pow(-1, float64(stopOrdersDirection))),
+		priceFloat*(1-ordersConfig.StopLossRatio*math.Pow(-1, float64(stopOrdersDirection))),
 	), minPriceIncrement)
-	if stopLossOrderType == investapi.OrderType_ORDER_TYPE_LIMIT {
-		signal.StopLoss.LimitPrice = utils.RoundQuotation(utils.FloatToQuotation(
-			priceFloat*(1-lossLimitRatio*math.Pow(-1, float64(stopOrdersDirection))),
+	if ordersConfig.StopLossOrderType == investapi.OrderType_ORDER_TYPE_LIMIT {
+		signal.StopLoss.ExecPrice = utils.RoundQuotation(utils.FloatToQuotation(
+			priceFloat*(1-ordersConfig.StopLossExecRatio*math.Pow(-1, float64(stopOrdersDirection))),
 		), minPriceIncrement)
 		signal.StopLoss.Type = investapi.StopOrderType_STOP_ORDER_TYPE_STOP_LIMIT
 	}

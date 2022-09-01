@@ -7,6 +7,7 @@ import (
 	"sync"
 	"tinkoff-invest-contest/internal/app"
 	"tinkoff-invest-contest/internal/bot"
+	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/strategies"
 	"tinkoff-invest-contest/internal/tradeenv"
 	"tinkoff-invest-contest/internal/utils"
@@ -17,16 +18,23 @@ var botId int64
 
 func CreateBot(c *gin.Context) {
 	args := struct {
-		Sandbox        bool   `form:"sandbox"`
-		Figi           string `form:"figi"`
-		InstrumentType string `form:"instrumentType"`
-		AllowMargin    bool   `form:"allowMargin"`
+		Sandbox        bool                 `form:"sandbox"`
+		Figi           string               `form:"figi"`
+		InstrumentType utils.InstrumentType `form:"instrumentType"`
+		AllowMargin    bool                 `form:"allowMargin"`
 
 		StrategyName   string `form:"strategyName"`
 		StrategyConfig string `form:"strategyConfig"`
-		CandleInterval string `form:"candleInterval"`
-		Window         int    `form:"window"`
-		OrderBookDepth int32  `form:"orderBookDepth"`
+
+		CandleInterval investapi.CandleInterval `form:"candleInterval"`
+		Window         int                      `form:"window"`
+		OrderBookDepth int32                    `form:"orderBookDepth"`
+
+		OrderType         investapi.OrderType `form:"orderType"`
+		StopLossOrderType investapi.OrderType `form:"stopLossOrderType"`
+		TakeProfitRatio   float64             `form:"takeProfitRatio"`
+		StopLossRatio     float64             `form:"stopLossRatio"`
+		StopLossExecRatio float64             `form:"stopLossExecRatio"`
 	}{}
 
 	err := c.Bind(&args)
@@ -39,25 +47,15 @@ func CreateBot(c *gin.Context) {
 	}
 
 	var tradeEnv *tradeenv.TradeEnv
-	var fee float64
 	if args.Sandbox {
 		tradeEnv = app.SandboxEnv
 	} else {
 		tradeEnv = app.CombatEnv
 	}
-	fee = tradeEnv.Fee
-	instrumentType, err := utils.StringToInstrumentType(args.InstrumentType)
-	if err != nil {
-		_, _ = c.Writer.WriteString(marshalResponse(
-			http.StatusBadRequest,
-			"No such instrument type '"+args.InstrumentType+"' ("+err.Error()+")",
-		))
-		return
-	}
 
 	mu.Lock()
 	id := fmt.Sprint(botId)
-	instrument, err := tradeEnv.Client.InstrumentByFigi(args.Figi, instrumentType)
+	instrument, err := tradeEnv.Client.InstrumentByFigi(args.Figi, args.InstrumentType)
 	if err != nil {
 		_, _ = c.Writer.WriteString(marshalResponse(
 			http.StatusNotFound,
@@ -72,7 +70,7 @@ func CreateBot(c *gin.Context) {
 	name += " #" + id
 
 	if newStrategyFromJSON, ok := strategies.JSONConstructors[args.StrategyName]; ok {
-		s, err := newStrategyFromJSON(args.StrategyConfig)
+		strategy, err := newStrategyFromJSON(args.StrategyConfig)
 		if err != nil {
 			_, _ = c.Writer.WriteString(marshalResponse(
 				http.StatusBadRequest,
@@ -80,17 +78,25 @@ func CreateBot(c *gin.Context) {
 			))
 			return
 		}
-		candleInterval, err := utils.StringToCandleInterval(args.CandleInterval)
-		if err != nil {
-			_, _ = c.Writer.WriteString(marshalResponse(
-				http.StatusBadRequest,
-				"Invalid candle interval '"+args.CandleInterval+"' ("+err.Error()+")",
-			))
-			return
-		}
-
 		app.Bots.Lock.Lock()
-		app.Bots.Table[id] = bot.New(id, name, tradeEnv, args.Figi, instrumentType, candleInterval, args.Window, args.OrderBookDepth, args.AllowMargin, fee, s)
+		app.Bots.Table[id] = bot.New(
+			id,
+			name,
+			args.Figi,
+			args.InstrumentType,
+			args.AllowMargin,
+			tradeEnv.Fee,
+			tradeEnv,
+			args.OrderType,
+			args.StopLossOrderType,
+			args.TakeProfitRatio,
+			args.StopLossRatio,
+			args.StopLossExecRatio,
+			args.CandleInterval,
+			args.Window,
+			args.OrderBookDepth,
+			strategy,
+		)
 		app.Bots.Lock.Unlock()
 	} else {
 		_, _ = c.Writer.WriteString(marshalResponse(

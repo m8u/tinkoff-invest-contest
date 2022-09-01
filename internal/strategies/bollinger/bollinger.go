@@ -50,7 +50,8 @@ func GetDefaultsJSON() string {
 	return string(bytes)
 }
 
-func (s *bollingerStrategy) GetTradeSignal(instrument utils.InstrumentInterface, marketData strategies.MarketData) (*strategies.TradeSignal, map[string]any) {
+func (s *bollingerStrategy) GetTradeSignal(instrument utils.InstrumentInterface, marketData strategies.MarketData,
+	ordersConfig strategies.OrdersConfig) (*strategies.TradeSignal, map[string]any) {
 	lowerBound, upperBound := s.indicator.Calculate(marketData.Candles)
 	indicatorValues := map[string]any{
 		"bollinger_lower_bound": lowerBound,

@@ -53,7 +53,7 @@ func TestTradeSignalStopOrder_IsTriggered(t *testing.T) {
 				Direction:    tt.fields.Direction,
 				Type:         tt.fields.Type,
 				TriggerPrice: tt.fields.TriggerPrice,
-				LimitPrice:   tt.fields.LimitPrice,
+				ExecPrice:    tt.fields.LimitPrice,
 			}
 			if got := stopOrder.IsTriggered(tt.args.price); got != tt.want {
 				t.Errorf("IsTriggered() = %v, want %v", got, tt.want)

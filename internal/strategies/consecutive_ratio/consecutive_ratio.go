@@ -59,7 +59,8 @@ func GetDefaultsJSON() string {
 	return string(bytes)
 }
 
-func (s *consecutiveRatioStrategy) GetTradeSignal(instrument utils.InstrumentInterface, marketData strategies.MarketData) (*strategies.TradeSignal, map[string]any) {
+func (s *consecutiveRatioStrategy) GetTradeSignal(instrument utils.InstrumentInterface, marketData strategies.MarketData,
+	ordersConfig strategies.OrdersConfig) (*strategies.TradeSignal, map[string]any) {
 	var bids, asks int64
 	for _, order := range marketData.OrderBook.Bids {
 		bids += order.Quantity
@@ -86,13 +87,9 @@ func (s *consecutiveRatioStrategy) GetTradeSignal(instrument utils.InstrumentInt
 		price := marketData.Candles[len(marketData.Candles)-1].Close
 		signal = strategies.NewTradeSignalWithStopOrders(
 			s.flag,
-			investapi.OrderType_ORDER_TYPE_MARKET,
 			price,
-			investapi.OrderType_ORDER_TYPE_LIMIT,
-			0.005,
-			0.007,
-			0.01,
 			instrument.GetMinPriceIncrement(),
+			ordersConfig,
 		)
 	}
 

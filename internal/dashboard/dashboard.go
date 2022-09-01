@@ -71,14 +71,14 @@ func init() {
 	}
 	botsFolder, _ = client.NewFolder("Bots")
 
-	_ = addUtilityDashboard("internal/dashboard/templates/manage_bots.json")
-	_ = addUtilityDashboard("internal/dashboard/templates/manage_accounts.json")
+	addUtilityDashboard("internal/dashboard/templates/manage_bots.json")
+	addUtilityDashboard("internal/dashboard/templates/manage_accounts.json")
 
 	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
 	botDashboards = make(map[string]int64)
 }
 
-func addUtilityDashboard(templatePath string) error {
+func addUtilityDashboard(templatePath string) {
 	template, _ := os.ReadFile(templatePath)
 	modelStr := string(template)
 	modelStr = strings.ReplaceAll(modelStr, "<host>", os.Getenv("HOST"))
@@ -91,7 +91,7 @@ func addUtilityDashboard(templatePath string) error {
 		Overwrite: true,
 	}
 	_, err := client.NewDashboard(dashboard)
-	return err
+	utils.MaybeCrash(err)
 }
 
 func IsGrafanaInitialized() bool {
@@ -102,9 +102,9 @@ func IsGrafanaInitialized() bool {
 	return true
 }
 
-func AddBotDashboard(botId string, botName string) error {
+func AddBotDashboard(botId string, botName string) {
 	if !IsGrafanaInitialized() {
-		return nil
+		return
 	}
 	modelStr := string(botDashboardTemplate)
 	modelStr = strings.ReplaceAll(modelStr, "<bot_id>", strings.ToLower(botId))
@@ -119,11 +119,8 @@ func AddBotDashboard(botId string, botName string) error {
 		Overwrite: true,
 	}
 	resp, err := client.NewDashboard(dashboard)
-	if err != nil {
-		return err
-	}
+	utils.MaybeCrash(err)
 	botDashboards[botId] = resp.ID
-	return nil
 }
 
 func RemoveBotDashboards() {
