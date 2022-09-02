@@ -374,7 +374,7 @@ func (c *Client) RunMarketDataStreamLoop(handleResponse func(marketDataResp *inv
 	utils.WaitForInternetConnection()
 	for {
 		if err != nil {
-			resubscribe()
+			resubscribe() // TODO: return and handle an error, maybe re-initialize the stream
 		}
 		resp, err = c.marketDataStream.Recv()
 		go handleResponse(resp)
