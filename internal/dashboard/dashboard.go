@@ -18,7 +18,7 @@ import (
 var client *grafana.Client
 var botsFolder grafana.Folder
 var botDashboardTemplate []byte
-var botDashboards map[string]int64
+var botDashboards map[int]int64
 
 func init() {
 	var err error
@@ -75,7 +75,7 @@ func init() {
 	addUtilityDashboard("internal/dashboard/templates/manage_accounts.json")
 
 	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
-	botDashboards = make(map[string]int64)
+	botDashboards = make(map[int]int64)
 }
 
 func addUtilityDashboard(templatePath string) {
@@ -102,12 +102,12 @@ func IsGrafanaInitialized() bool {
 	return true
 }
 
-func AddBotDashboard(botId string, botName string) {
+func AddBotDashboard(botId int, botName string) {
 	if !IsGrafanaInitialized() {
 		return
 	}
 	modelStr := string(botDashboardTemplate)
-	modelStr = strings.ReplaceAll(modelStr, "<bot_id>", strings.ToLower(botId))
+	modelStr = strings.ReplaceAll(modelStr, "<bot_id>", fmt.Sprint(botId))
 	modelStr = strings.ReplaceAll(modelStr, "<bot_name>", strings.ToLower(botName))
 	modelStr = strings.ReplaceAll(modelStr, "<host>", os.Getenv("HOST"))
 	modelStr = strings.ReplaceAll(modelStr, "<port>", os.Getenv("PORT"))
@@ -131,7 +131,7 @@ func RemoveBotDashboards() {
 	}
 }
 
-func AnnotateOrder(botId string, direction investapi.OrderDirection, quantity int64, price float64, currency string) error {
+func AnnotateOrder(botId int, direction investapi.OrderDirection, quantity int64, price float64, currency string) error {
 	_, err := client.NewAnnotation(&grafana.Annotation{
 		DashboardID: botDashboards[botId],
 		PanelID:     0,

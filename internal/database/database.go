@@ -41,7 +41,7 @@ func ensureDBInitialized() {
 	}
 }
 
-func CreateCandlesTable(botId string) {
+func CreateCandlesTable(botId int) {
 	ensureDBInitialized()
 	_, err := db.Exec(
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS bot_%v_candles (
@@ -57,7 +57,7 @@ func CreateCandlesTable(botId string) {
 	utils.MaybeCrash(err)
 }
 
-func CreateIndicatorValuesTable(botId string, fields []string) {
+func CreateIndicatorValuesTable(botId int, fields []string) {
 	ensureDBInitialized()
 	sqlStr := fmt.Sprintf("CREATE TABLE IF NOT EXISTS bot_%v_indicators (", botId)
 	for _, name := range fields {
@@ -68,7 +68,7 @@ func CreateIndicatorValuesTable(botId string, fields []string) {
 	utils.MaybeCrash(err)
 }
 
-func AddStrategyOutputValues(botId string, indicatorValues map[string]any) {
+func AddStrategyOutputValues(botId int, indicatorValues map[string]any) {
 	ensureDBInitialized()
 	keys := make([]string, 0)
 	values := make([]any, 0)
@@ -92,7 +92,7 @@ func AddStrategyOutputValues(botId string, indicatorValues map[string]any) {
 	utils.MaybeCrash(err)
 }
 
-func InsertCandles(botId string, candles []*investapi.HistoricCandle) {
+func InsertCandles(botId int, candles []*investapi.HistoricCandle) {
 	ensureDBInitialized()
 	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO bot_%v_candles(open, high, low, close, volume, time)
 		VALUES (:open, :high, :low, :close, :volume, :time)
@@ -102,7 +102,7 @@ func InsertCandles(botId string, candles []*investapi.HistoricCandle) {
 	utils.MaybeCrash(err)
 }
 
-func UpdateLastCandle(botId string, candle *investapi.Candle) {
+func UpdateLastCandle(botId int, candle *investapi.Candle) {
 	ensureDBInitialized()
 	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO bot_%v_candles(open, high, low, close, volume, time)
 		VALUES (:open, :high, :low, :close, :volume, :time)

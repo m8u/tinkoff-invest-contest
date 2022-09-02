@@ -2,65 +2,77 @@ package tradeenv
 
 import (
 	"log"
+	"sync"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
 )
 
+var mu sync.Mutex
+
 type subscriptions struct {
-	candles   map[string]investapi.CandleInstrument
-	info      map[string]investapi.InfoInstrument
-	orderBook map[string]investapi.OrderBookInstrument
+	candles   []*investapi.CandleInstrument
+	info      []*investapi.InfoInstrument
+	orderBook []*investapi.OrderBookInstrument
 }
 
-func (e *TradeEnv) SubscribeCandles(botId string, figi string, interval investapi.SubscriptionInterval) {
+func (e *TradeEnv) SubscribeCandles(botId int, figi string, interval investapi.SubscriptionInterval) {
 	err := e.Client.SubscribeCandles(figi, interval)
 	utils.MaybeCrash(err)
-
-	e.mu.Lock()
-	e.subscriptions.candles[botId] = investapi.CandleInstrument{
+	mu.Lock()
+	if len(e.subscriptions.candles) < botId+1 {
+		e.subscriptions.candles = append(e.subscriptions.candles,
+			make([]*investapi.CandleInstrument, 1+botId-len(e.subscriptions.candles))...)
+	}
+	mu.Unlock()
+	e.subscriptions.candles[botId] = &investapi.CandleInstrument{
 		Figi:     figi,
 		Interval: interval,
 	}
-	e.mu.Unlock()
 }
 
-func (e *TradeEnv) SubscribeInfo(botId string, figi string) {
+func (e *TradeEnv) SubscribeInfo(botId int, figi string) {
 	err := e.Client.SubscribeInfo(figi)
 	utils.MaybeCrash(err)
-
-	e.mu.Lock()
-	e.subscriptions.info[botId] = investapi.InfoInstrument{
+	mu.Lock()
+	if len(e.subscriptions.info) < botId+1 {
+		e.subscriptions.info = append(e.subscriptions.info,
+			make([]*investapi.InfoInstrument, 1+botId-len(e.subscriptions.info))...)
+	}
+	mu.Unlock()
+	e.subscriptions.info[botId] = &investapi.InfoInstrument{
 		Figi: figi,
 	}
-	e.mu.Unlock()
 }
 
-func (e *TradeEnv) SubscribeOrderBook(botId string, figi string, depth int32) {
+func (e *TradeEnv) SubscribeOrderBook(botId int, figi string, depth int32) {
 	err := e.Client.SubscribeOrderBook(figi, depth)
 	utils.MaybeCrash(err)
-
-	e.mu.Lock()
-	e.subscriptions.orderBook[botId] = investapi.OrderBookInstrument{
+	mu.Lock()
+	if len(e.subscriptions.orderBook) < botId+1 {
+		e.subscriptions.orderBook = append(e.subscriptions.orderBook,
+			make([]*investapi.OrderBookInstrument, 1+botId-len(e.subscriptions.orderBook))...)
+	}
+	mu.Unlock()
+	e.subscriptions.orderBook[botId] = &investapi.OrderBookInstrument{
 		Figi:  figi,
 		Depth: depth,
 	}
-	e.mu.Unlock()
 }
 
-func (e *TradeEnv) UnsubscribeAll(botId string) {
-	e.mu.Lock()
+func (e *TradeEnv) UnsubscribeAll(botId int) {
 	_ = e.Client.UnsubscribeCandles(e.subscriptions.candles[botId].Figi, e.subscriptions.candles[botId].Interval)
 	_ = e.Client.UnsubscribeInfo(e.subscriptions.info[botId].Figi)
 	_ = e.Client.UnsubscribeOrderBook(e.subscriptions.orderBook[botId].Figi, e.subscriptions.orderBook[botId].Depth)
-	delete(e.subscriptions.candles, botId)
-	delete(e.subscriptions.info, botId)
-	delete(e.subscriptions.orderBook, botId)
-	e.mu.Unlock()
+	e.subscriptions.candles[botId] = nil
+	e.subscriptions.info[botId] = nil
+	e.subscriptions.orderBook[botId] = nil
 }
 
 func (e *TradeEnv) handleResubscribe() {
-	e.mu.RLock()
 	for _, subscription := range e.subscriptions.candles {
+		if subscription == nil {
+			continue
+		}
 		err := e.Client.SubscribeCandles(
 			subscription.Figi,
 			subscription.Interval,
@@ -68,19 +80,24 @@ func (e *TradeEnv) handleResubscribe() {
 		utils.MaybeCrash(err)
 	}
 	for _, subscription := range e.subscriptions.info {
+		if subscription == nil {
+			continue
+		}
 		err := e.Client.SubscribeInfo(
 			subscription.Figi,
 		)
 		utils.MaybeCrash(err)
 	}
 	for _, subscription := range e.subscriptions.orderBook {
+		if subscription == nil {
+			continue
+		}
 		err := e.Client.SubscribeOrderBook(
 			subscription.Figi,
 			subscription.Depth,
 		)
 		utils.MaybeCrash(err)
 	}
-	e.mu.RUnlock()
 }
 
 func (e *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {
@@ -110,15 +127,36 @@ func (e *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {
 	}
 	tradingStatus := event.GetTradingStatus()
 	if tradingStatus != nil {
-		e.marketData[tradingStatus.Figi].TradingStatus <- tradingStatus
+		for i, subscription := range e.subscriptions.info {
+			if subscription == nil {
+				continue
+			}
+			if subscription.Figi == tradingStatus.Figi {
+				e.marketData[i].TradingStatus <- tradingStatus
+			}
+		}
 	}
 	candle := event.GetCandle()
 	if candle != nil {
-		e.marketData[candle.Figi].Candle <- candle
+		for i, subscription := range e.subscriptions.candles {
+			if subscription == nil {
+				continue
+			}
+			if subscription.Figi == candle.Figi && subscription.Interval == candle.Interval {
+				e.marketData[i].Candle <- candle
+			}
+		}
 	}
 	orderBook := event.GetOrderbook()
 	if orderBook != nil {
-		e.marketData[orderBook.Figi].OrderBook <- orderBook
+		for i, subscription := range e.subscriptions.orderBook {
+			if subscription == nil {
+				continue
+			}
+			if subscription.Figi == orderBook.Figi && subscription.Depth == orderBook.Depth {
+				e.marketData[i].OrderBook <- orderBook
+			}
+		}
 	}
 }
 
@@ -128,20 +166,16 @@ type MarketDataChannelStack struct {
 	OrderBook     chan *investapi.OrderBook
 }
 
-func (e *TradeEnv) InitMarketDataChannels(figi string) {
-	e.mu.Lock()
-	e.marketData[figi] = &MarketDataChannelStack{
-		TradingStatus: make(chan *investapi.TradingStatus),
-		Candle:        make(chan *investapi.Candle, 100),
-		OrderBook:     make(chan *investapi.OrderBook, 100),
-	}
-	e.mu.Unlock()
+func (e *TradeEnv) InitNewMarketDataChannels() {
+	e.marketData = append(e.marketData, &MarketDataChannelStack{
+		TradingStatus: make(chan *investapi.TradingStatus, 1000),
+		Candle:        make(chan *investapi.Candle, 1000),
+		OrderBook:     make(chan *investapi.OrderBook, 1000),
+	})
 }
 
-func (e *TradeEnv) GetMarketDataChannels(figi string) *MarketDataChannelStack {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.marketData[figi]
+func (e *TradeEnv) GetMarketDataChannels(botId int) *MarketDataChannelStack {
+	return e.marketData[botId]
 }
 
 func (e *TradeEnv) InitTradesChannels(accountIds []string) {

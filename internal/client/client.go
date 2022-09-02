@@ -371,22 +371,22 @@ func (c *Client) RunMarketDataStreamLoop(handleResponse func(marketDataResp *inv
 	resubscribe func()) {
 	var err error
 	var resp *investapi.MarketDataResponse
+	utils.WaitForInternetConnection()
 	for {
-		utils.WaitForInternetConnection()
 		if err != nil {
 			resubscribe()
 		}
 		resp, err = c.marketDataStream.Recv()
-		handleResponse(resp)
+		go handleResponse(resp)
 	}
 }
 
 func (c *Client) RunTradesStreamLoop(handleResponse func(tradesResp *investapi.TradesStreamResponse)) {
 	var resp *investapi.TradesStreamResponse
+	utils.WaitForInternetConnection()
 	for {
-		utils.WaitForInternetConnection()
 		resp, _ = c.tradesStream.Recv()
-		handleResponse(resp)
+		go handleResponse(resp)
 	}
 }
 

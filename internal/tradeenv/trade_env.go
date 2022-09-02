@@ -17,7 +17,7 @@ type TradeEnv struct {
 	mu            sync.RWMutex
 	accounts      map[string]map[string]*moneyPosition
 	subscriptions *subscriptions
-	marketData    map[string]*MarketDataChannelStack
+	marketData    []*MarketDataChannelStack
 	trades        map[string]chan *investapi.OrderTrades
 
 	Client *client.Client
@@ -29,11 +29,11 @@ func New(token string, isSandbox bool) *TradeEnv {
 		isSandbox: isSandbox,
 		accounts:  make(map[string]map[string]*moneyPosition),
 		subscriptions: &subscriptions{
-			candles:   make(map[string]investapi.CandleInstrument),
-			info:      make(map[string]investapi.InfoInstrument),
-			orderBook: make(map[string]investapi.OrderBookInstrument),
+			candles:   make([]*investapi.CandleInstrument, 0),
+			info:      make([]*investapi.InfoInstrument, 0),
+			orderBook: make([]*investapi.OrderBookInstrument, 0),
 		},
-		marketData: make(map[string]*MarketDataChannelStack),
+		marketData: make([]*MarketDataChannelStack, 0),
 		trades:     make(map[string]chan *investapi.OrderTrades),
 		Client:     client.NewClient(token),
 	}

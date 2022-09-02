@@ -16,7 +16,7 @@ import (
 )
 
 type Bot struct {
-	id   string
+	id   int
 	name string
 
 	figi           string
@@ -45,7 +45,7 @@ type Bot struct {
 }
 
 func New(
-	id string,
+	id int,
 	name string,
 	figi string,
 	instrumentType utils.InstrumentType,
@@ -84,7 +84,7 @@ func New(
 		orderError:     make(chan error),
 	}
 
-	bot.tradeEnv.InitMarketDataChannels(bot.figi)
+	bot.tradeEnv.InitNewMarketDataChannels()
 
 	db.CreateCandlesTable(bot.id)
 	db.CreateIndicatorValuesTable(bot.id, strategy.GetOutputKeys())
@@ -94,6 +94,8 @@ func New(
 }
 
 func (bot *Bot) loop() error {
+	log.Printf("%v bot %q has started", bot.logPrefix(), bot.name)
+
 	currentTimestamp := time.Time{}
 
 	var (
@@ -110,8 +112,8 @@ func (bot *Bot) loop() error {
 		return err
 	}
 
+	marketData := bot.tradeEnv.GetMarketDataChannels(bot.id)
 	for !appstate.ShouldExit && !bot.removing {
-		marketData := bot.tradeEnv.GetMarketDataChannels(bot.figi)
 		select {
 		// Get candle from stream
 		case candle := <-marketData.Candle:
@@ -316,10 +318,7 @@ func (bot *Bot) loop() error {
 func (bot *Bot) Serve() {
 	bot.started = true
 	for !appstate.ShouldExit && !bot.removing {
-		log.Printf("%v bot %q is starting...", bot.logPrefix(), bot.name)
-
 		utils.WaitForInternetConnection()
-
 		bot.tradeEnv.SubscribeCandles(bot.id, bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
 		bot.tradeEnv.SubscribeOrderBook(bot.id, bot.figi, bot.orderBookDepth)
 
@@ -342,7 +341,7 @@ func (bot *Bot) TogglePause() {
 
 func (bot *Bot) Remove() {
 	bot.removing = true
-	bot.tradeEnv.UnsubscribeAll(bot.figi)
+	bot.tradeEnv.UnsubscribeAll(bot.id)
 	log.Printf("%v bot %q has been removed", bot.logPrefix(), bot.name)
 }
 

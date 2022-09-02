@@ -14,7 +14,7 @@ import (
 )
 
 var mu sync.Mutex
-var botId int64
+var botId int
 
 func CreateBot(c *gin.Context) {
 	args := struct {
@@ -54,7 +54,6 @@ func CreateBot(c *gin.Context) {
 	}
 
 	mu.Lock()
-	id := fmt.Sprint(botId)
 	instrument, err := tradeEnv.Client.InstrumentByFigi(args.Figi, args.InstrumentType)
 	if err != nil {
 		_, _ = c.Writer.WriteString(marshalResponse(
@@ -67,7 +66,7 @@ func CreateBot(c *gin.Context) {
 	if args.Sandbox {
 		name = "[sandbox] " + name
 	}
-	name += " #" + id
+	name += " #" + fmt.Sprint(botId)
 
 	if newStrategyFromJSON, ok := strategies.JSONConstructors[args.StrategyName]; ok {
 		strategy, err := newStrategyFromJSON(args.StrategyConfig)
@@ -79,8 +78,8 @@ func CreateBot(c *gin.Context) {
 			return
 		}
 		app.Bots.Lock.Lock()
-		app.Bots.Table[id] = bot.New(
-			id,
+		app.Bots.Table[fmt.Sprint(botId)] = bot.New(
+			botId,
 			name,
 			args.Figi,
 			args.InstrumentType,
@@ -122,7 +121,6 @@ func CreateBot(c *gin.Context) {
 func StartBot(c *gin.Context) {
 	id := c.Query("id")
 	go app.Bots.Table[id].Serve()
-
 	_, _ = c.Writer.WriteString("ok")
 }
 
