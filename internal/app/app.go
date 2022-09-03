@@ -13,7 +13,7 @@ import (
 )
 
 type botsTable struct {
-	Lock  sync.Mutex
+	Lock  sync.RWMutex
 	Table map[string]*bot.Bot
 }
 

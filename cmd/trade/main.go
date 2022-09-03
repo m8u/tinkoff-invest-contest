@@ -24,11 +24,11 @@ func handleExit() {
 	signal.Stop(ch)
 	log.Println("Exiting...")
 	// Run remove sequences for bots
-	app.Bots.Lock.Lock()
+	app.Bots.Lock.RLock()
 	for _, bot := range app.Bots.Table {
 		bot.Remove()
 	}
-	app.Bots.Lock.Unlock()
+	app.Bots.Lock.RUnlock()
 	// Trigger exit actions
 	appstate.ShouldExit = true
 	appstate.ExitActionsWG.Done()

@@ -68,36 +68,51 @@ func (e *TradeEnv) UnsubscribeAll(botId int) {
 	e.subscriptions.orderBook[botId] = nil
 }
 
-func (e *TradeEnv) handleResubscribe() {
+func (e *TradeEnv) handleResubscribe() error {
 	for _, subscription := range e.subscriptions.candles {
 		if subscription == nil {
 			continue
 		}
-		err := e.Client.SubscribeCandles(
+		_ = e.Client.UnsubscribeCandles(
 			subscription.Figi,
 			subscription.Interval,
 		)
-		utils.MaybeCrash(err)
+		if err := e.Client.SubscribeCandles(
+			subscription.Figi,
+			subscription.Interval,
+		); err != nil {
+			return err
+		}
 	}
 	for _, subscription := range e.subscriptions.info {
 		if subscription == nil {
 			continue
 		}
-		err := e.Client.SubscribeInfo(
+		_ = e.Client.UnsubscribeInfo(
 			subscription.Figi,
 		)
-		utils.MaybeCrash(err)
+		if err := e.Client.SubscribeInfo(
+			subscription.Figi,
+		); err != nil {
+			return err
+		}
 	}
 	for _, subscription := range e.subscriptions.orderBook {
 		if subscription == nil {
 			continue
 		}
-		err := e.Client.SubscribeOrderBook(
+		_ = e.Client.UnsubscribeOrderBook(
 			subscription.Figi,
 			subscription.Depth,
 		)
-		utils.MaybeCrash(err)
+		if err := e.Client.SubscribeOrderBook(
+			subscription.Figi,
+			subscription.Depth,
+		); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (e *TradeEnv) handleMarketDataStream(event *investapi.MarketDataResponse) {

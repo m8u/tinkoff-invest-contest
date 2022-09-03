@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"log"
 	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
@@ -368,16 +369,18 @@ func (c *Client) PostSandboxOrder(figi string, quantity int64, price float64, di
 }
 
 func (c *Client) RunMarketDataStreamLoop(handleResponse func(marketDataResp *investapi.MarketDataResponse),
-	resubscribe func()) {
+	resubscribe func() error) {
 	var err error
 	var resp *investapi.MarketDataResponse
 	utils.WaitForInternetConnection()
 	for {
 		if err != nil {
-			resubscribe() // TODO: return and handle an error, maybe re-initialize the stream
+			log.Println("market data stream has collapsed, resubscribing...")
+			err = resubscribe()
+		} else {
+			resp, err = c.marketDataStream.Recv()
+			go handleResponse(resp)
 		}
-		resp, err = c.marketDataStream.Recv()
-		go handleResponse(resp)
 	}
 }
 

@@ -19,10 +19,9 @@ type Bot struct {
 	id   int
 	name string
 
-	figi           string
-	instrumentType utils.InstrumentType
-	allowMargin    bool
-	fee            float64
+	instrument  utils.InstrumentInterface
+	allowMargin bool
+	fee         float64
 
 	tradeEnv *tradeenv.TradeEnv
 
@@ -47,8 +46,7 @@ type Bot struct {
 func New(
 	id int,
 	name string,
-	figi string,
-	instrumentType utils.InstrumentType,
+	instrument utils.InstrumentInterface,
 	allowMargin bool,
 	fee float64,
 	tradeEnv *tradeenv.TradeEnv,
@@ -63,13 +61,12 @@ func New(
 	strategy strategies.Strategy,
 ) *Bot {
 	bot := &Bot{
-		id:             id,
-		name:           name,
-		figi:           figi,
-		instrumentType: instrumentType,
-		allowMargin:    allowMargin,
-		fee:            fee,
-		tradeEnv:       tradeEnv,
+		id:          id,
+		name:        name,
+		instrument:  instrument,
+		allowMargin: allowMargin,
+		fee:         fee,
+		tradeEnv:    tradeEnv,
 		ordersConfig: strategies.OrdersConfig{
 			OrderType:         orderType,
 			StopLossOrderType: stopLossOrderType,
@@ -95,9 +92,7 @@ func New(
 
 func (bot *Bot) loop() error {
 	log.Printf("%v bot %q has started", bot.logPrefix(), bot.name)
-
 	currentTimestamp := time.Time{}
-
 	var (
 		candles              []*investapi.HistoricCandle
 		err                  error
@@ -105,13 +100,6 @@ func (bot *Bot) loop() error {
 		currentOrderBook     *investapi.OrderBook
 		shouldReleaseAccount bool
 	)
-
-	instrument, err := bot.tradeEnv.Client.InstrumentByFigi(bot.figi, bot.instrumentType)
-	if err != nil {
-		log.Println(bot.logPrefix(), utils.PrettifyError(err))
-		return err
-	}
-
 	marketData := bot.tradeEnv.GetMarketDataChannels(bot.id)
 	for !appstate.ShouldExit && !bot.removing {
 		select {
@@ -120,7 +108,7 @@ func (bot *Bot) loop() error {
 			currentCandle = candle
 			if currentCandle.Time.AsTime() != currentTimestamp {
 				// On a new candle, get historic candles in amount of >= window
-				candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.figi, bot.candleInterval, bot.window)
+				candles, err = bot.tradeEnv.GetAtLeastNLastCandles(bot.instrument.GetFigi(), bot.candleInterval, bot.window)
 				if err != nil {
 					log.Println(bot.logPrefix(), utils.PrettifyError(err))
 					return err
@@ -143,9 +131,10 @@ func (bot *Bot) loop() error {
 			bot.waitingForOrderExecution = false
 
 		default:
-			// Don't block, unless
 			for bot.paused && !bot.removing {
+				time.Sleep(2 * time.Second)
 			}
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
@@ -155,7 +144,7 @@ func (bot *Bot) loop() error {
 
 		// Get trade signal
 		signal, outputValues := bot.strategy.GetTradeSignal(
-			instrument,
+			bot.instrument,
 			strategies.MarketData{
 				Candles: append(candles,
 					&investapi.HistoricCandle{
@@ -214,18 +203,18 @@ func (bot *Bot) loop() error {
 			// and determine lot quantity for the deal (either buy or sell)
 			var lots int64
 			if bot.occupiedAccountId == "" {
-				accountId, discard, unlock := bot.tradeEnv.GetUnoccupiedAccount(instrument.GetCurrency())
+				accountId, discard, unlock := bot.tradeEnv.GetUnoccupiedAccount(bot.instrument.GetCurrency())
 				if accountId == "" {
 					continue
 				}
 				maxDealValue := bot.tradeEnv.CalculateMaxDealValue(
 					accountId,
 					signal.Order.Direction,
-					instrument,
+					bot.instrument,
 					currentCandle.Close,
 					bot.allowMargin,
 				)
-				lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Order.Direction, maxDealValue, instrument, currentCandle.Close, bot.fee)
+				lots = bot.tradeEnv.CalculateLotsCanAfford(signal.Order.Direction, maxDealValue, bot.instrument, currentCandle.Close, bot.fee)
 				if lots == 0 {
 					bot.lastDiscardTS = time.Now()
 					discard()
@@ -236,7 +225,7 @@ func (bot *Bot) loop() error {
 				bot.occupiedAccountId = accountId
 			} else if signal.Order.Direction != bot.prevSignalDirection {
 				shouldReleaseAccount = true
-				lots, err = bot.tradeEnv.GetLotsHave(bot.occupiedAccountId, instrument)
+				lots, err = bot.tradeEnv.GetLotsHave(bot.occupiedAccountId, bot.instrument)
 				if err != nil {
 					log.Println(bot.logPrefix(), utils.PrettifyError(err))
 					return err
@@ -250,7 +239,7 @@ func (bot *Bot) loop() error {
 			go func() {
 				// Place an order and wait for it to be filled
 				avgPositionPrice, err := bot.tradeEnv.DoOrder(
-					bot.figi,
+					bot.instrument.GetFigi(),
 					lots,
 					currentCandle.Close,
 					signal.Order.Direction,
@@ -261,25 +250,25 @@ func (bot *Bot) loop() error {
 				log.Printf("%v %v %v %v for avg. %v %v, account: %v",
 					bot.logPrefix(),
 					utils.OrderDirectionToString(signal.Order.Direction),
-					lots*int64(instrument.GetLot()),
-					instrument.GetTicker(),
+					lots*int64(bot.instrument.GetLot()),
+					bot.instrument.GetTicker(),
 					avgPositionPrice,
-					instrument.GetCurrency(),
+					bot.instrument.GetCurrency(),
 					bot.occupiedAccountId,
 				)
 				err = dashboard.AnnotateOrder(
 					bot.id,
 					signal.Order.Direction,
-					lots*int64(instrument.GetLot()),
+					lots*int64(bot.instrument.GetLot()),
 					avgPositionPrice,
-					instrument.GetCurrency(),
+					bot.instrument.GetCurrency(),
 				)
 				if err != nil {
 					log.Println(bot.logPrefix(), utils.PrettifyError(err))
 				}
 
 				if shouldReleaseAccount {
-					bot.tradeEnv.ReleaseAccount(bot.occupiedAccountId, instrument.GetCurrency())
+					bot.tradeEnv.ReleaseAccount(bot.occupiedAccountId, bot.instrument.GetCurrency())
 					bot.occupiedAccountId = ""
 				}
 				bot.prevSignalDirection = signal.Order.Direction
@@ -291,19 +280,19 @@ func (bot *Bot) loop() error {
 							bot.logPrefix(),
 							utils.QuotationToFloat(bot.currentStopLoss.TriggerPrice),
 							utils.QuotationToFloat(bot.currentStopLoss.ExecPrice),
-							instrument.GetCurrency(),
+							bot.instrument.GetCurrency(),
 						)
 					} else {
 						log.Printf("%v setting stop loss = %v %v",
 							bot.logPrefix(),
 							utils.QuotationToFloat(bot.currentStopLoss.TriggerPrice),
-							instrument.GetCurrency(),
+							bot.instrument.GetCurrency(),
 						)
 					}
 					log.Printf("%v setting take profit = %v %v",
 						bot.logPrefix(),
 						utils.QuotationToFloat(bot.currentTakeProfit.TriggerPrice),
-						instrument.GetCurrency(),
+						bot.instrument.GetCurrency(),
 					)
 				}
 				log.Println(bot.logPrefix())
@@ -319,8 +308,8 @@ func (bot *Bot) Serve() {
 	bot.started = true
 	for !appstate.ShouldExit && !bot.removing {
 		utils.WaitForInternetConnection()
-		bot.tradeEnv.SubscribeCandles(bot.id, bot.figi, investapi.SubscriptionInterval(bot.candleInterval))
-		bot.tradeEnv.SubscribeOrderBook(bot.id, bot.figi, bot.orderBookDepth)
+		bot.tradeEnv.SubscribeCandles(bot.id, bot.instrument.GetFigi(), investapi.SubscriptionInterval(bot.candleInterval))
+		bot.tradeEnv.SubscribeOrderBook(bot.id, bot.instrument.GetFigi(), bot.orderBookDepth)
 
 		err := bot.loop()
 		if err != nil {
@@ -368,7 +357,7 @@ func (bot *Bot) GetYAML() string {
 
 		Strategy any `yaml:"Strategy"`
 	}{
-		FIGI:           bot.figi,
+		FIGI:           bot.instrument.GetFigi(),
 		AllowMargin:    bot.allowMargin,
 		Fee:            bot.fee,
 		Window:         bot.window,

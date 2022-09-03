@@ -149,32 +149,34 @@
       })
     }
 
-    function createBot(startImmediately) {
+    async function createBot(startImmediately) {
       let formData = $("#createBotForm").serialize()
       let figis = $("#figiText").val().split(/ *, */)
-      figis.forEach(figi => {
-        let id
-        let success = false
-        fetch("/api/bots/Create?"+formData+"&figi="+figi, {
+      let ids = []
+      let success = false
+      for (let figi of figis) {
+        await fetch("/api/bots/Create?" + formData + "&figi=" + figi, {
           method: "POST"
         }).then(async resp => {
           resp = JSON.parse(await resp.text())
           if (resp.status === 200) {
-            $("#toastText").html("Bot \'"+resp.payload[0].name+"\' successfully created")
+            $("#toastText").html("Bot \'" + resp.payload[0].name + "\' successfully created")
             success = true
-            id = resp.payload[0].id
+            ids.push(resp.payload[0].id)
           } else {
-            $("#toastText").html("Error "+resp.status+": "+resp.message)
+            $("#toastText").html("Error " + resp.status + ": " + resp.message)
           }
           (new bootstrap.Toast($("#toast"))).show()
-        }).then(() => {
-          if (success && startImmediately) {
-            fetch("/api/bots/Start?id=" + id, {
+        })
+        if (!success) break
+      }
+      if (success && startImmediately) {
+        for (let id of ids) {
+          fetch("/api/bots/Start?id=" + id, {
             method: "POST"
           })
         }
-        })
-      })
+      }
     }
   </script>
 </body>

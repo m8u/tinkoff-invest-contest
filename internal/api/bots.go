@@ -52,8 +52,6 @@ func CreateBot(c *gin.Context) {
 	} else {
 		tradeEnv = app.CombatEnv
 	}
-
-	mu.Lock()
 	instrument, err := tradeEnv.Client.InstrumentByFigi(args.Figi, args.InstrumentType)
 	if err != nil {
 		_, _ = c.Writer.WriteString(marshalResponse(
@@ -66,6 +64,7 @@ func CreateBot(c *gin.Context) {
 	if args.Sandbox {
 		name = "[sandbox] " + name
 	}
+	mu.Lock()
 	name += " #" + fmt.Sprint(botId)
 
 	if newStrategyFromJSON, ok := strategies.JSONConstructors[args.StrategyName]; ok {
@@ -77,12 +76,10 @@ func CreateBot(c *gin.Context) {
 			))
 			return
 		}
-		app.Bots.Lock.Lock()
 		app.Bots.Table[fmt.Sprint(botId)] = bot.New(
 			botId,
 			name,
-			args.Figi,
-			args.InstrumentType,
+			instrument,
 			args.AllowMargin,
 			tradeEnv.Fee,
 			tradeEnv,
@@ -96,7 +93,6 @@ func CreateBot(c *gin.Context) {
 			args.OrderBookDepth,
 			strategy,
 		)
-		app.Bots.Lock.Unlock()
 	} else {
 		_, _ = c.Writer.WriteString(marshalResponse(
 			http.StatusBadRequest,
