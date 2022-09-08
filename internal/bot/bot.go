@@ -121,6 +121,9 @@ func (bot *Bot) loop() error {
 			go db.UpdateLastCandle(bot.id, currentCandle)
 
 		case orderBook := <-marketData.OrderBook:
+			if !orderBook.IsConsistent || len(orderBook.Bids) == 0 || len(orderBook.Asks) == 0 {
+				continue
+			}
 			currentOrderBook = orderBook
 
 		case orderError := <-bot.orderError:
@@ -241,17 +244,19 @@ func (bot *Bot) loop() error {
 				avgPositionPrice, err := bot.tradeEnv.DoOrder(
 					bot.instrument.GetFigi(),
 					lots,
-					currentCandle.Close,
+					signal.Order.Price,
 					signal.Order.Direction,
 					bot.occupiedAccountId,
-					investapi.OrderType_ORDER_TYPE_MARKET,
+					signal.Order.Type,
 				)
 				log.Println(bot.logPrefix())
-				log.Printf("%v %v %v %v for avg. %v %v, account: %v",
+				log.Printf("%v %v %v %v for %v %v (actual avg. %v %v), account: %v",
 					bot.logPrefix(),
 					utils.OrderDirectionToString(signal.Order.Direction),
 					lots*int64(bot.instrument.GetLot()),
 					bot.instrument.GetTicker(),
+					utils.QuotationToFloat(signal.Order.Price),
+					bot.instrument.GetCurrency(),
 					avgPositionPrice,
 					bot.instrument.GetCurrency(),
 					bot.occupiedAccountId,

@@ -7,7 +7,7 @@ services:
       dockerfile: build/db/Dockerfile
   grafana:
     container_name: grafana
-    image: grafana/grafana-oss:9.0.0
+    image: grafana/grafana-oss:9.1.2
     environment:
       - GF_DATABASE_TYPE=postgres
       - GF_DATABASE_HOST=db:5432

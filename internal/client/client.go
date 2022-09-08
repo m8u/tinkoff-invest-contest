@@ -375,6 +375,8 @@ func (c *Client) RunMarketDataStreamLoop(handleResponse func(marketDataResp *inv
 	utils.WaitForInternetConnection()
 	for {
 		if err != nil {
+			time.Sleep(5 * time.Second)
+			log.Println("error:", err.Error())
 			log.Println("market data stream has collapsed, resubscribing...")
 			err = resubscribe()
 		} else {
