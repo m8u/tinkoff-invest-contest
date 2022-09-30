@@ -139,47 +139,55 @@
       "withCredentials": false
     },
     {
+      "gridPos": {
+        "h": 15,
+        "w": 17,
+        "x": 0,
+        "y": 8
+      },
+      "type": "candlestick",
+      "title": "Candle chart",
       "datasource": {
-        "type": "postgres",
-        "uid": "PostgreSQL"
+        "type": "influxdb"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
             "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
             "fillOpacity": 0,
             "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 1,
+            "spanNulls": false,
+            "showPoints": "never",
             "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
             "scaleDistribution": {
               "type": "linear"
             },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
             },
             "thresholdsStyle": {
               "mode": "off"
+            },
+            "lineStyle": {
+              "fill": "solid"
             }
           },
-          "decimals": 2,
+          "color": {
+            "mode": "palette-classic"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -194,109 +202,42 @@
               }
             ]
           },
-          "unit": "none"
+          "decimals": 2
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 15,
-        "w": 17,
-        "x": 0,
-        "y": 8
-      },
-      "id": 0,
       "options": {
+        "mode": "candles+volume",
         "candleStyle": "candles",
         "colorStrategy": "open-close",
         "colors": {
-          "down": "red",
-          "up": "green"
-        },
-        "fields": {
-          "close": "close",
-          "high": "high",
-          "low": "low",
-          "open": "open",
-          "volume": "volume"
+          "up": "green",
+          "down": "red"
         },
         "includeAllFields": true,
         "legend": {
-          "calcs": [],
-          "displayMode": "hidden",
-          "placement": "bottom"
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
         },
-        "mode": "candles+volume"
+        "fields": {
+          "open": "open",
+          "high": "high",
+          "low": "low",
+          "close": "close",
+          "volume": "volume"
+        }
       },
       "targets": [
         {
           "datasource": {
-            "type": "postgres",
-            "uid": "PostgreSQL"
+            "type": "influxdb"
           },
-          "format": "time_series",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": false,
-          "rawSql": "SELECT \"time\" AS \"time\",\n  open, high, low, close, volume FROM bot_<bot_id>_candles WHERE $__timeFilter(\"time\") ORDER BY 1",
-          "refId": "candles",
-          "select": [
-            [
-              {
-                "params": [
-                  "open, high, low, close, volume"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "table": "bot_<bot_id>_candles",
-          "timeColumn": "\"time\"",
-          "timeColumnType": "timestamp",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
-        },
-        {
-          "datasource": {
-            "type": "postgres",
-            "uid": "PostgreSQL"
-          },
-          "format": "time_series",
-          "group": [],
-          "hide": false,
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  *\nFROM bot_<bot_id>_indicators\nWHERE\n  $__timeFilter(\"time\")\nORDER BY 1",
-          "refId": "indicators",
-          "select": [
-            [
-              {
-                "params": [
-                  "*"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "table": "bot_<bot_id>_indicators",
-          "timeColumn": "\"time\"",
-          "timeColumnType": "timestamptz",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
+          "query": "from(bucket:\"tinkoff-invest-contest\")\r\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n    |> filter(\r\n        fn: (r) => r._measurement == \"bot_<bot_id>_candles\" or r._measurement == \"bot_<bot_id>_strategy_output\"\r\n    )",
+          "refId": "A"
         }
-      ],
-      "timeShift": "0h+15m",
-      "title": "Candle chart",
-      "type": "candlestick"
+      ]
     },
     {
       "datasource": {

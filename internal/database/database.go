@@ -1,148 +1,82 @@
 package db
 
 import (
+	"context"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/api"
+	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"log"
-	"strings"
+	"os"
 	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
 )
 
-const Host = "db"
-const User = "postgres"
-const Password = "postgres"
-const DBname = "tinkoff_invest_contest"
-
-var db *sqlx.DB
+//var queryAPI api.QueryAPI
+var writeAPI api.WriteAPI
 
 func init() {
-	connStr := fmt.Sprintf("host=%v user=%v password=%v dbname=%v sslmode=disable",
-		Host, User, Password, DBname)
+	url := "http://influxdb:8086"
+	token := os.Getenv("INFLUXDB_TOKEN")
+	org := "m8u"
+	bucket := "tinkoff-invest-contest"
 
-	var err error
-	db, err = sqlx.Connect("postgres", connStr)
+	client := influxdb2.NewClient(url, token)
+	//queryAPI = client.QueryAPI(org)
+	writeAPI = client.WriteAPI(org, bucket)
+
+	err := client.DeleteAPI().DeleteWithName(context.Background(), org, bucket, time.Unix(0, 0), time.Now(), "")
 	if err != nil {
-		log.Fatalf("unable to connect to database: %v", err)
-	}
-
-	_, err = db.Exec("DROP SCHEMA public CASCADE")
-	_, _ = db.Exec("CREATE SCHEMA public")
-	_, _ = db.Exec("GRANT ALL ON SCHEMA public TO postgres")
-	_, _ = db.Exec("GRANT ALL ON SCHEMA public TO public")
-	utils.MaybeCrash(err)
-}
-
-func ensureDBInitialized() {
-	if db == nil {
-		log.Fatalln("database connection was not initialized")
+		log.Fatalf("error: cannot empty the InfluxDB bucket (%v)", err.Error())
 	}
 }
 
-func CreateCandlesTable(botId int) {
-	ensureDBInitialized()
-	_, err := db.Exec(
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS bot_%v_candles (
-			open DOUBLE PRECISION,
-			high DOUBLE PRECISION,
-			low DOUBLE PRECISION,
-			close DOUBLE PRECISION,
-			volume BIGINT,
-			time TIMESTAMP WITH TIME ZONE UNIQUE)`,
-			botId,
-		),
-	)
-	utils.MaybeCrash(err)
+func WriteStrategyOutput(botId int, strategyOutput map[string]any, ts time.Time) {
+	writeAPI.WritePoint(write.NewPoint(
+		fmt.Sprintf("bot_%v_strategy_output", botId),
+		map[string]string{},
+		strategyOutput,
+		ts,
+	))
 }
 
-func CreateIndicatorValuesTable(botId int, fields []string) {
-	ensureDBInitialized()
-	sqlStr := fmt.Sprintf("CREATE TABLE IF NOT EXISTS bot_%v_indicators (", botId)
-	for _, name := range fields {
-		sqlStr += name + " DOUBLE PRECISION, "
-	}
-	sqlStr += "time TIMESTAMP WITH TIME ZONE UNIQUE)"
-	_, err := db.Exec(sqlStr)
-	utils.MaybeCrash(err)
-}
-
-func AddStrategyOutputValues(botId int, indicatorValues map[string]any) {
-	ensureDBInitialized()
-	keys := make([]string, 0)
-	values := make([]any, 0)
-	sqlStr := fmt.Sprintf("INSERT INTO bot_%v_indicators(", botId)
-	for k, v := range indicatorValues {
-		keys = append(keys, k)
-		values = append(values, v)
-	}
-	sqlStr += strings.Join(keys, ", ")
-	sqlStr += ") VALUES (:"
-	sqlStr += strings.Join(keys, ", :")
-	sqlStr += ") ON CONFLICT (time) DO UPDATE SET "
-	for _, key := range keys {
-		if key == "time" {
-			continue
-		}
-		sqlStr += key + "=excluded." + key + ","
-	}
-	sqlStr = sqlStr[:len(sqlStr)-1]
-	_, err := db.NamedExec(sqlStr, indicatorValues)
-	utils.MaybeCrash(err)
-}
-
-func InsertCandles(botId int, candles []*investapi.HistoricCandle) {
-	ensureDBInitialized()
-	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO bot_%v_candles(open, high, low, close, volume, time)
-		VALUES (:open, :high, :low, :close, :volume, :time)
-		ON CONFLICT (time) DO UPDATE
-		SET open=excluded.open, high=excluded.high, low=excluded.low, close=excluded.close, volume=excluded.volume`,
-		botId), sqlizeHistoricCandles(candles))
-	utils.MaybeCrash(err)
-}
-
-func UpdateLastCandle(botId int, candle *investapi.Candle) {
-	ensureDBInitialized()
-	_, err := db.NamedExec(fmt.Sprintf(`INSERT INTO bot_%v_candles(open, high, low, close, volume, time)
-		VALUES (:open, :high, :low, :close, :volume, :time)
-		ON CONFLICT (time) DO UPDATE
-		SET open=excluded.open, high=excluded.high, low=excluded.low, close=excluded.close, volume=excluded.volume`,
-		botId), sqlizeCandle(candle))
-	utils.MaybeCrash(err)
-}
-
-type sqlCandle struct {
-	Open   float64   `db:"open"`
-	High   float64   `db:"high"`
-	Low    float64   `db:"low"`
-	Close  float64   `db:"close"`
-	Volume int64     `db:"volume"`
-	Time   time.Time `db:"time"`
-}
-
-func sqlizeHistoricCandles(candles []*investapi.HistoricCandle) []any {
-	sqlizedCandles := make([]any, 0)
+func WriteHistoricCandles(botId int, candles []*investapi.HistoricCandle) {
 	for _, candle := range candles {
-		sqlizedCandles = append(sqlizedCandles, sqlCandle{
-			Open:   utils.QuotationToFloat(candle.Open),
-			High:   utils.QuotationToFloat(candle.High),
-			Low:    utils.QuotationToFloat(candle.Low),
-			Close:  utils.QuotationToFloat(candle.Close),
-			Volume: candle.Volume,
-			Time:   candle.Time.AsTime(),
-		})
+		writeAPI.WritePoint(write.NewPoint(
+			fmt.Sprintf("bot_%v_candles", botId),
+			map[string]string{},
+			marshalHistoricCandle(candle),
+			candle.Time.AsTime(),
+		))
 	}
-	return sqlizedCandles
 }
 
-func sqlizeCandle(candle *investapi.Candle) any {
-	return sqlCandle{
-		Open:   utils.QuotationToFloat(candle.Open),
-		High:   utils.QuotationToFloat(candle.High),
-		Low:    utils.QuotationToFloat(candle.Low),
-		Close:  utils.QuotationToFloat(candle.Close),
-		Volume: candle.Volume,
-		Time:   candle.Time.AsTime(),
+func WriteLastCandle(botId int, candle *investapi.Candle) {
+	writeAPI.WritePoint(write.NewPoint(
+		fmt.Sprintf("bot_%v_candles", botId),
+		map[string]string{},
+		marshalCandle(candle),
+		candle.Time.AsTime(),
+	))
+}
+
+func marshalHistoricCandle(candle *investapi.HistoricCandle) map[string]any {
+	return map[string]any{
+		"open":   utils.QuotationToFloat(candle.Open),
+		"high":   utils.QuotationToFloat(candle.High),
+		"low":    utils.QuotationToFloat(candle.Low),
+		"close":  utils.QuotationToFloat(candle.Close),
+		"volume": candle.Volume,
+	}
+}
+
+func marshalCandle(candle *investapi.Candle) map[string]any {
+	return map[string]any{
+		"open":   utils.QuotationToFloat(candle.Open),
+		"high":   utils.QuotationToFloat(candle.High),
+		"low":    utils.QuotationToFloat(candle.Low),
+		"close":  utils.QuotationToFloat(candle.Close),
+		"volume": candle.Volume,
 	}
 }

@@ -83,8 +83,6 @@ func New(
 
 	bot.tradeEnv.InitNewMarketDataChannels()
 
-	db.CreateCandlesTable(bot.id)
-	db.CreateIndicatorValuesTable(bot.id, strategy.GetOutputKeys())
 	dashboard.AddBotDashboard(bot.id, bot.name)
 
 	return bot
@@ -115,10 +113,10 @@ func (bot *Bot) loop() error {
 				}
 				// Trim excessive candles
 				candles = candles[len(candles)-(bot.window-1):]
-				db.InsertCandles(bot.id, candles)
+				db.WriteHistoricCandles(bot.id, candles)
 				currentTimestamp = currentCandle.Time.AsTime()
 			}
-			go db.UpdateLastCandle(bot.id, currentCandle)
+			go db.WriteLastCandle(bot.id, currentCandle)
 
 		case orderBook := <-marketData.OrderBook:
 			if !orderBook.IsConsistent || len(orderBook.Bids) == 0 || len(orderBook.Asks) == 0 {
@@ -163,8 +161,7 @@ func (bot *Bot) loop() error {
 			bot.ordersConfig,
 		)
 		if len(outputValues) > 0 {
-			outputValues["time"] = currentCandle.Time.AsTime()
-			go db.AddStrategyOutputValues(bot.id, outputValues)
+			go db.WriteStrategyOutput(bot.id, outputValues, currentCandle.Time.AsTime())
 		}
 
 		if bot.waitingForOrderExecution {

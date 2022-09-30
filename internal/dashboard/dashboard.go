@@ -2,16 +2,13 @@ package dashboard
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	grafana "github.com/grafana/grafana-api-golang-client"
 	"log"
 	"os"
 	"strconv"
 	"strings"
-	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
-	db "tinkoff-invest-contest/internal/database"
 	"tinkoff-invest-contest/internal/utils"
 )
 
@@ -29,41 +26,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("error creating Grafana API client: %v", err)
 	}
-
-	var dataSources []*grafana.DataSource
-	err = errors.New("")
-	for err != nil {
-		dataSources, err = client.DataSources()
-		if err == nil {
-			break
-		}
-		log.Printf("can't connect to Grafana: %v. Retrying...", err)
-		time.Sleep(5 * time.Second)
-	}
-	for _, dataSource := range dataSources {
-		if dataSource.Name == "PostgreSQL" {
-			_ = client.DeleteDataSource(dataSource.ID)
-		}
-	}
-
-	_, _ = client.NewDataSource(&grafana.DataSource{
-		Name:      "PostgreSQL",
-		UID:       "PostgreSQL",
-		Type:      "postgres",
-		URL:       db.Host + ":5432",
-		Database:  db.DBname,
-		User:      db.User,
-		Access:    "proxy",
-		IsDefault: true,
-		JSONData: grafana.JSONData{
-			Sslmode:      "disable",
-			TLSAuth:      false,
-			TimeInterval: "1s",
-		},
-		SecureJSONData: grafana.SecureJSONData{
-			Password: db.Password,
-		},
-	})
 
 	folders, _ := client.Folders()
 	for _, folder := range folders {

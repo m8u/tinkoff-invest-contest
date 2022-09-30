@@ -1,30 +1,32 @@
 version: "3.3"
 services:
-  db:
-    container_name: db
-    build:
-      context: .
-      dockerfile: build/db/Dockerfile
+  influxdb:
+    container_name: influxdb
+    image: influxdb:2.4
+    environment:
+      - DOCKER_INFLUXDB_INIT_USERNAME=user
+      - DOCKER_INFLUXDB_INIT_PASSWORD=password
+      - DOCKER_INFLUXDB_INIT_ORG=m8u
+      - DOCKER_INFLUXDB_INIT_BUCKET=tinkoff-invest-contest
+    ports:
+      - "3002:8086"
   grafana:
     container_name: grafana
     image: grafana/grafana-oss:9.1.2
     environment:
-      - GF_DATABASE_TYPE=postgres
-      - GF_DATABASE_HOST=db:5432
-      - GF_DATABASE_USER=postgres
-      - GF_DATABASE_PASSWORD=postgres
-      - GF_DATABASE_SSL_MODE=disable
       - GF_LOG_LEVEL=warn
       - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
-      - GF_INSTALL_PLUGINS=https://grafana.com/api/plugins/ryantxu-ajax-panel/versions/0.1.0/download;ryantxu-ajax-panel
+      - GF_INSTALL_PLUGINS=ryantxu-ajax-panel
       - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=ryantxu-ajax-panel
     depends_on:
-      - db
+      - influxdb
     restart: always
     links:
-      - db
+      - influxdb
     ports:
       - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
   trade:
     container_name: trade
     build:
@@ -36,11 +38,14 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      - influxdb
       - grafana
     restart: on-failure:3
     links:
-      - db
+      - influxdb
       - grafana
     ports:
       - "3001:3001"
+
+volumes:
+  grafana-storage:
