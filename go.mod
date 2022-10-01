@@ -7,7 +7,7 @@ require (
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/grafana/grafana-api-golang-client v0.7.0
+	github.com/grafana/grafana-api-golang-client v0.12.0
 	github.com/influxdata/influxdb-client-go/v2 v2.10.0
 	github.com/joho/godotenv v1.4.0
 	google.golang.org/grpc v1.46.2

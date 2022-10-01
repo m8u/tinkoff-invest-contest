@@ -7,7 +7,6 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"log"
-	"os"
 	"time"
 	"tinkoff-invest-contest/internal/client/investapi"
 	"tinkoff-invest-contest/internal/utils"
@@ -18,7 +17,7 @@ var writeAPI api.WriteAPI
 
 func init() {
 	url := "http://influxdb:8086"
-	token := os.Getenv("INFLUXDB_TOKEN")
+	token := utils.GetInfluxDBToken()
 	org := "m8u"
 	bucket := "tinkoff-invest-contest"
 

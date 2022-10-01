@@ -36,6 +36,27 @@ func init() {
 	addUtilityDashboard("internal/dashboard/templates/manage_bots.json")
 	addUtilityDashboard("internal/dashboard/templates/manage_accounts.json")
 
+	_, err = client.NewDataSource(&grafana.DataSource{
+		Type:      "influxdb",
+		Name:      "InfluxDB",
+		UID:       "-- InfluxDB --",
+		URL:       "http://influxdb:8086",
+		Access:    "server",
+		IsDefault: true,
+		JSONData: map[string]any{
+			"version":       "Flux",
+			"defaultBucket": "tinkoff-invest-contest",
+			"organization":  "m8u",
+			"timeInterval":  "1s",
+		},
+		SecureJSONData: map[string]any{
+			"token": utils.GetInfluxDBToken(),
+		},
+	})
+	if err != nil {
+		log.Printf("error adding Grafana data source: %v", err)
+	}
+
 	botDashboardTemplate, _ = os.ReadFile("internal/dashboard/templates/bot_dashboard.json")
 	botDashboards = make(map[int]int64)
 }
@@ -77,7 +98,7 @@ func AddBotDashboard(botId int, botName string) {
 	_ = json.Unmarshal([]byte(modelStr), &model)
 	dashboard := grafana.Dashboard{
 		Model:     model,
-		Folder:    botsFolder.ID,
+		FolderID:  botsFolder.ID,
 		Overwrite: true,
 	}
 	resp, err := client.NewDashboard(dashboard)

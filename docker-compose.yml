@@ -4,6 +4,7 @@ services:
     container_name: influxdb
     image: influxdb:2.4
     environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=user
       - DOCKER_INFLUXDB_INIT_PASSWORD=password
       - DOCKER_INFLUXDB_INIT_ORG=m8u

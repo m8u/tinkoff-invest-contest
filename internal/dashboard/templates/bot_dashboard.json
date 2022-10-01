@@ -148,7 +148,8 @@
       "type": "candlestick",
       "title": "Candle chart",
       "datasource": {
-        "type": "influxdb"
+        "type": "influxdb",
+        "uid": "-- InfluxDB --"
       },
       "fieldConfig": {
         "defaults": {
@@ -232,7 +233,8 @@
       "targets": [
         {
           "datasource": {
-            "type": "influxdb"
+            "type": "influxdb",
+            "uid": "-- InfluxDB --"
           },
           "query": "from(bucket:\"tinkoff-invest-contest\")\r\n    |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n    |> filter(\r\n        fn: (r) => r._measurement == \"bot_<bot_id>_candles\" or r._measurement == \"bot_<bot_id>_strategy_output\"\r\n    )",
           "refId": "A"

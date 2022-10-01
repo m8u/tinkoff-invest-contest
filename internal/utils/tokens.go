@@ -28,3 +28,11 @@ func GetGrafanaToken() string {
 	}
 	return token
 }
+
+func GetInfluxDBToken() string {
+	token := os.Getenv("INFLUXDB_TOKEN")
+	if token == "" {
+		log.Println("please provide InfluxDB admin token via 'INFLUXDB_TOKEN' environment variable")
+	}
+	return token
+}
